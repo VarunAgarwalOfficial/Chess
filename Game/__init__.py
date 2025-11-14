@@ -51,15 +51,17 @@ class Board:
             }
         }
 
-        
+
 
 
         self.check = False
         self.checks = []
         self.double_check = False
 
+        self.game_over = False
+        self.game_result = None
 
-        
+
     '''
     Moving a piece
     '''
@@ -111,7 +113,7 @@ class Board:
                 '''
                 Remove castling rights
                 '''
-                self.castling[self.to_move]["alowed"] = False
+                self.castling[self.to_move]["allowed"] = False
 
 
 
@@ -159,6 +161,13 @@ class Board:
                 print("Something is Wrong")
         else:
             self.reset_check()
+
+        # Check for game-ending conditions
+        result = self.get_game_result()
+        if result:
+            self.game_over = True
+            self.game_result = result
+            print(f"Game Over: {result}")
 
 
 
@@ -216,7 +225,13 @@ class Board:
     from Game.CheckFunctions import is_pinned
     from Game.CheckFunctions import in_check
 
-
+    from Game.GameEndFunctions import is_checkmate
+    from Game.GameEndFunctions import is_stalemate
+    from Game.GameEndFunctions import is_insufficient_material
+    from Game.GameEndFunctions import is_threefold_repetition
+    from Game.GameEndFunctions import is_fifty_move_rule
+    from Game.GameEndFunctions import get_game_result
+    from Game.GameEndFunctions import _position_hash
 
     from Game.MoveGenerator import pawn_moves
     from Game.MoveGenerator import knight_moves
@@ -225,5 +240,4 @@ class Board:
     from Game.MoveGenerator import queen_moves
     from Game.MoveGenerator import king_moves
 
-    
-    
+
