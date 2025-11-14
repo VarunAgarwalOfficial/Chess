@@ -16,9 +16,9 @@ Chess AI Engine with Advanced Optimizations:
 
 import time
 from copy import deepcopy
-from cache_system import TranspositionTable, CacheManager
-from optimizations import MoveOrderingOptimizer, LateMovePruning, NullMovePruning, AspirationWindow
-from advanced_search import EndgameKnowledge, SearchExtensions, SearchOptimizer
+from .cache_system import TranspositionTable, CacheManager
+from .optimizations import MoveOrderingOptimizer, LateMovePruning, NullMovePruning, AspirationWindow
+from .advanced_search import EndgameKnowledge, SearchExtensions, SearchOptimizer
 
 
 class AI:

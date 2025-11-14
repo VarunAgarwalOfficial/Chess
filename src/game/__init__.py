@@ -2,8 +2,8 @@
 The Game module which holds all the Baord information
 '''
 
-from Game.Piece import Piece
-from optimizations import ZobristHashing
+from .Piece import Piece
+from ai.optimizations import ZobristHashing
 
 class Board:
     def __init__(self):
@@ -229,24 +229,24 @@ class Board:
         else:
             self.reset_check()
 
-    from Game.MoveGenerator import get_legal_moves
-    from Game.CheckFunctions import reset_check
-    from Game.CheckFunctions import is_pinned
-    from Game.CheckFunctions import in_check
+    from .MoveGenerator import get_legal_moves
+    from .CheckFunctions import reset_check
+    from .CheckFunctions import is_pinned
+    from .CheckFunctions import in_check
 
-    from Game.GameEndFunctions import is_checkmate
-    from Game.GameEndFunctions import is_stalemate
-    from Game.GameEndFunctions import is_insufficient_material
-    from Game.GameEndFunctions import is_threefold_repetition
-    from Game.GameEndFunctions import is_fifty_move_rule
-    from Game.GameEndFunctions import get_game_result
-    from Game.GameEndFunctions import _position_hash
+    from .GameEndFunctions import is_checkmate
+    from .GameEndFunctions import is_stalemate
+    from .GameEndFunctions import is_insufficient_material
+    from .GameEndFunctions import is_threefold_repetition
+    from .GameEndFunctions import is_fifty_move_rule
+    from .GameEndFunctions import get_game_result
+    from .GameEndFunctions import _position_hash
 
-    from Game.MoveGenerator import pawn_moves
-    from Game.MoveGenerator import knight_moves
-    from Game.MoveGenerator import bishop_moves
-    from Game.MoveGenerator import rook_moves
-    from Game.MoveGenerator import queen_moves
-    from Game.MoveGenerator import king_moves
+    from .MoveGenerator import pawn_moves
+    from .MoveGenerator import knight_moves
+    from .MoveGenerator import bishop_moves
+    from .MoveGenerator import rook_moves
+    from .MoveGenerator import queen_moves
+    from .MoveGenerator import king_moves
 
 

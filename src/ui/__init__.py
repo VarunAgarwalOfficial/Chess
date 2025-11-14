@@ -1,12 +1,12 @@
 import pygame
 import sys
 import threading
-from Game import Board
-from ai import AI
-from opening_book import OpeningBook
-from tutorial import ChessTutorial
-from puzzles import ChessPuzzles
-from settings import Settings
+from game import Board
+from ai.ai import AI
+from features.opening_book import OpeningBook
+from features.tutorial import ChessTutorial
+from features.puzzles import ChessPuzzles
+from features.settings import Settings
 
 
 '''
