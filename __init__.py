@@ -540,11 +540,7 @@ class Game:
                         self.captured_pieces[self.board.to_move].append(captured.type)
 
                     # Make the move
-                    if(self.board.move(self.square_selected, move)):
-                        pass
-                        '''
-                        TODO PROMOTION > CHECK
-                        '''
+                    self.board.move(self.square_selected, move)
 
                     # Add to opening book
                     self.opening_book.add_move(self.square_selected, move["to"])

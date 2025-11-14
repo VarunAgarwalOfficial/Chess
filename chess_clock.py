@@ -102,7 +102,7 @@ class ChessClock:
     def format_time(self, seconds):
         '''Format time as MM:SS or HH:MM:SS'''
         if seconds is None:
-            return "∞"
+            return "Unlimited"
 
         seconds = int(seconds)
 
