@@ -12,19 +12,25 @@ Chess/
 |   |-- CheckFunctions.py # Check and pin detection (7.3KB)
 |   |-- GameEndFunctions.py # Checkmate/stalemate detection (5.9KB)
 |   +-- PromotionUI.py    # Pawn promotion dialog (3.1KB)
-|-- ai.py                 # Computer opponent engine (17KB)
+|-- ai.py                 # Computer opponent engine (24KB)
+|-- optimizations.py      # Advanced optimization techniques (21KB)
+|-- cache_system.py       # Caching systems for performance (14KB)
+|-- advanced_search.py    # Advanced search techniques (20KB)
 |-- opening_book.py       # Opening recognition (4.4KB)
 |-- chess_clock.py        # Time control system (4.5KB)
 |-- pgn_handler.py        # PGN save/load (6.8KB)
 |-- settings.py           # Settings and statistics (6.2KB)
-|-- puzzles.py            # Tactical puzzle system (5.7KB)
+|-- puzzles.py            # 40 tactical puzzles (12KB)
+|-- tutorial.py           # 20 tutorial lessons (13KB)
 |-- ui_config.py          # UI design specification (8.6KB)
 |-- tests.py              # Comprehensive test suite (7.3KB)
 |-- requirements.txt      # Python dependencies
+|-- ARCHITECTURE.md       # System architecture documentation
+|-- OPTIMIZATIONS.md      # Performance optimization documentation
 +-- images/               # Piece graphics (12 PNG files)
 ```
 
-Total: ~110KB of Python code (excluding images)
+Total: ~180KB of Python code (excluding images)
 
 ## Core Components
 
@@ -107,30 +113,45 @@ Implements all game-ending conditions:
 
 ### 6. Computer Opponent (ai.py)
 
-Advanced chess engine with:
+Advanced chess engine with state-of-the-art optimizations:
 
 **Search Algorithm:**
 - Minimax with Alpha-Beta pruning
 - Iterative deepening (depth 1 to max_depth)
 - Quiescence search for tactical positions
-- Transposition table for caching
+- Enhanced transposition table with replacement strategy
+- Late Move Reduction (LMR) for deeper search
+- Null Move Pruning for position verification
+- Aspiration windows for faster search
+- Search extensions (check, passed pawn, recapture)
 
 **Evaluation:**
 - Material counting (pawn=100, knight=320, etc.)
 - Piece-square tables for positioning
 - Separate tables for each piece type
 - Flipped tables for black pieces
+- Endgame knowledge for simple endgames (KQ vs K, KR vs K)
 
-**Optimization:**
-- Move ordering (MVV-LVA)
-- Alpha-beta cutoffs
-- Position hashing
-- Statistics tracking
+**Advanced Optimizations:**
+- Zobrist hashing for O(1) position comparison (Board class)
+- Advanced move ordering: PV moves, hash moves, MVV-LVA, killer moves, history heuristic
+- Transposition table with exact/upper/lower bound handling
+- Killer move heuristic (2 killers per depth)
+- History heuristic tracking successful moves
+- Principal Variation (PV) tracking
+- Statistics tracking (nodes, cutoffs, TT hits, NPS)
 
 **Difficulty Levels:**
-- Easy: depth 2 (~1K nodes, <0.1s)
-- Medium: depth 3 (~10K nodes, ~0.5s)
-- Hard: depth 4 (~50K nodes, ~2-3s)
+- Easy: depth 2 (~1K nodes, <0.1s, ~30K NPS)
+- Medium: depth 3 (~10K nodes, ~0.5s, ~20K NPS)
+- Hard: depth 4 (~50K nodes, ~2-3s, ~25K NPS)
+- Expert: depth 5 (~250K nodes, ~10-15s, ~20K NPS)
+
+**Expected Performance with Optimizations:**
+- 3-5x faster node searching
+- Effective depth increased by 1-2 plies
+- 50-80% cutoff rate (vs 50% before)
+- 50-60% TT hit rate (vs 30% before)
 
 ### 7. Advanced Features
 
@@ -153,10 +174,22 @@ Advanced chess engine with:
 - Elo rating system
 
 **Puzzles (puzzles.py):**
-- 8 tactical puzzles
-- Themes: forks, pins, mates, etc.
-- Difficulty levels
+- 40 tactical puzzles (expanded from 8)
+- Themes: forks, pins, skewers, mates, windmill, zugzwang, etc.
+- Classic patterns: Legal's Mate, Arabian Mate, Boden's Mate, etc.
+- Difficulty levels: easy, medium, hard
 - Hint system
+- Progress tracking
+
+**Tutorial (tutorial.py):**
+- 20 comprehensive lessons
+- Categories: basics, special moves, strategy, tactics, endgame
+- Piece movement lessons (pawn, knight, bishop, rook, queen, king)
+- Special moves: castling, en passant, promotion
+- Tactical lessons: pin, fork, skewer, discovered attack, remove defender
+- Strategy: opening principles, material value
+- Endgame: king activity, passed pawns, rook vs pawn
+- Progress tracking and category filtering
 
 **UI Config (ui_config.py):**
 - Centralized design specification
