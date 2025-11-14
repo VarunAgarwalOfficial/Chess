@@ -100,11 +100,8 @@ def get_legal_moves(self, pos):
 
 
 '''
-Returns a list of all possible PAWN moves 
-'''
-'''
-TODO en passant
-TODO promotion
+Returns a list of all possible PAWN moves
+Includes en passant and promotion
 '''
 def pawn_moves(self , row , col):
     dirn =  self.is_pinned(row,col)

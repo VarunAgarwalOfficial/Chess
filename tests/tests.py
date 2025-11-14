@@ -3,9 +3,13 @@ Comprehensive tests for Chess game
 Tests checkmate, stalemate, AI, and game mechanics
 '''
 
-from Game import Board
-from Game.Piece import Piece
-from ai import AI
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from game import Board
+from game.Piece import Piece
+from ai.ai import AI
 
 def test_checkmate():
     '''Test checkmate detection'''
@@ -30,7 +34,7 @@ def test_checkmate():
 
     assert board.is_checkmate(), "Failed: Fool's Mate should be checkmate!"
     assert board.game_result == "checkmate_black", "Failed: Black should win!"
-    print("✓ Fool's Mate checkmate detected correctly")
+    print("[PASS] Fool's Mate checkmate detected correctly")
 
     return True
 
@@ -66,7 +70,7 @@ def test_stalemate():
     print(f"Legal moves for black king: {len(legal_moves)}")
 
     assert is_stale, "Failed: Should be stalemate!"
-    print("✓ Stalemate detected correctly")
+    print("[PASS] Stalemate detected correctly")
 
     return True
 
@@ -86,12 +90,12 @@ def test_insufficient_material():
     board.king_positions["black"] = (0, 4)
 
     assert board.is_insufficient_material(), "Failed: K vs K should be insufficient material!"
-    print("✓ K vs K insufficient material detected")
+    print("[PASS] K vs K insufficient material detected")
 
     # King + Bishop vs King
     board.state[7][5] = Piece("white", "bishop")
     assert board.is_insufficient_material(), "Failed: K+B vs K should be insufficient material!"
-    print("✓ K+B vs K insufficient material detected")
+    print("[PASS] K+B vs K insufficient material detected")
 
     return True
 
@@ -106,14 +110,14 @@ def test_ai_evaluation():
     eval_score = ai.evaluate_board()
     print(f"Starting position evaluation: {eval_score}")
     assert abs(eval_score) < 200, f"Starting position should be roughly equal, got {eval_score}"
-    print("✓ Starting position evaluated correctly")
+    print("[PASS] Starting position evaluated correctly")
 
     # Position with white ahead (white has extra queen)
     board.state[0][3] = None  # Remove black queen
     eval_score = ai.evaluate_board()
     print(f"White ahead by queen evaluation: {eval_score}")
     assert eval_score > 700, f"White should be ahead by ~900, got {eval_score}"
-    print("✓ Material advantage evaluated correctly")
+    print("[PASS] Material advantage evaluated correctly")
 
     return True
 
@@ -131,12 +135,12 @@ def test_ai_move_generation():
     print(f"AI chose to move from {pos} to {move['to']}")
     assert move is not None, "AI should find a move!"
     assert pos is not None, "AI should provide starting position!"
-    print("✓ AI generated a valid move")
+    print("[PASS] AI generated a valid move")
 
     # Verify the move is legal
     legal_moves = board.get_legal_moves(pos)
     assert move in legal_moves, "AI move should be legal!"
-    print("✓ AI move is legal")
+    print("[PASS] AI move is legal")
 
     return True
 
@@ -163,7 +167,7 @@ def test_special_moves():
 
     print(f"En passant moves available: {len(en_passant_moves)}")
     assert len(en_passant_moves) > 0, "En passant should be available!"
-    print("✓ En passant detected correctly")
+    print("[PASS] En passant detected correctly")
 
     # Test Castling
     board2 = Board()
@@ -178,7 +182,7 @@ def test_special_moves():
 
     print(f"Castling moves available: {len(castling_moves)}")
     assert len(castling_moves) > 0, "Queen-side castling should be available!"
-    print("✓ Castling detected correctly")
+    print("[PASS] Castling detected correctly")
 
     return True
 
@@ -202,7 +206,7 @@ def test_move_undo():
 
     # Verify state restored
     assert str(board.state) == initial_state, "State should be restored after undo!"
-    print("✓ Move undo works correctly")
+    print("[PASS] Move undo works correctly")
 
     return True
 
@@ -230,7 +234,7 @@ def run_all_tests():
             if test():
                 passed += 1
         except Exception as e:
-            print(f"✗ {test.__name__} FAILED: {e}")
+            print(f"[FAIL] {test.__name__} FAILED: {e}")
             failed += 1
 
     print("\n" + "="*50)
