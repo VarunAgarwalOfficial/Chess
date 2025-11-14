@@ -179,17 +179,29 @@ The computer opponent can search:
 
 Performance varies based on position complexity.
 
-## Future Enhancements
+## New Features in Development
 
-Potential improvements:
-- [ ] Pawn promotion piece selection UI
-- [ ] Time controls
-- [ ] Save/load games (PGN format)
-- [ ] Move highlighting (show last move)
+Recently added modules (integrated in next release):
+- [x] Chess Clock with multiple time controls (bullet, blitz, rapid, classical)
+- [x] Pawn promotion piece selection UI
+- [x] Save/load games in PGN format
+- [x] FEN position import/export
+- [x] Comprehensive settings system
+- [x] Statistics tracking with Elo rating
+- [x] Chess puzzle mode with 8+ tactical puzzles
+- [x] Game statistics (wins, losses, draws, rating history)
+
+Future enhancements:
+- [ ] Move animations
 - [ ] Sound effects
+- [ ] Tutorial mode for beginners
+- [ ] Position analysis mode
+- [ ] Game review/replay with navigation
+- [ ] Multiple visual themes
+- [ ] Last move highlighting
 - [ ] Online multiplayer
 - [ ] Chess engine UCI protocol support
-- [ ] Opening book moves from database
+- [ ] Extended opening book database
 
 ## Credits
 
@@ -223,7 +235,17 @@ python3 __init__.py  # Run game
 
 ## Changelog
 
-### Version 2.0 (Current)
+### Version 2.1 (In Development)
+- Added chess clock system with multiple time controls
+- Implemented pawn promotion piece selection UI
+- Added PGN save/load functionality
+- Implemented FEN notation support for position import/export
+- Created comprehensive settings system with persistence
+- Added statistics tracking with Elo rating system
+- Implemented chess puzzle mode with 8+ tactical puzzles
+- Added game statistics dashboard tracking wins/losses/draws
+
+### Version 2.0
 - Added advanced computer opponent with multiple difficulty levels
 - Implemented comprehensive dashboard with evaluation bar
 - Added move history in algebraic notation
@@ -234,7 +256,7 @@ python3 __init__.py  # Run game
 - Fixed castling rights bug
 - Improved UI with better color scheme
 
-### Version 1.0 (Initial)
+### Version 1.0
 - Basic chess rules implementation
 - Check detection
 - Special moves (castling, en passant, promotion)
