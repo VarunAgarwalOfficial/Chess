@@ -3,6 +3,8 @@ The Game module which holds all the Baord information
 '''
 
 from Game.Piece import Piece
+from optimizations import ZobristHashing
+
 class Board:
     def __init__(self):
 
@@ -60,6 +62,10 @@ class Board:
 
         self.game_over = False
         self.game_result = None
+
+        # Zobrist hashing for fast position comparison
+        self.zobrist = ZobristHashing()
+        self.position_hash = self.zobrist.hash_position(self)
 
 
     '''
@@ -168,6 +174,9 @@ class Board:
             self.game_over = True
             self.game_result = result
             print(f"Game Over: {result}")
+
+        # Update position hash after move
+        self.position_hash = self.zobrist.hash_position(self)
 
 
 

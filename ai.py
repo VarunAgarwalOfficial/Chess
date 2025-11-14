@@ -1,15 +1,24 @@
 '''
-Chess AI Engine with:
+Chess AI Engine with Advanced Optimizations:
 - Minimax algorithm with Alpha-Beta pruning
-- Piece-square tables for positional evaluation
-- Move ordering (MVV-LVA - Most Valuable Victim, Least Valuable Attacker)
+- Enhanced transposition table with replacement strategy
+- Zobrist hashing for fast position comparison
+- Advanced move ordering (PV, hash moves, MVV-LVA, killer moves, history heuristic)
+- Late Move Reduction (LMR)
+- Null Move Pruning
+- Aspiration windows
 - Quiescence search for tactical positions
 - Iterative deepening
-- Transposition table for caching positions
+- Search extensions (check, passed pawn, recapture)
+- Endgame knowledge
+- Piece-square tables for positional evaluation
 '''
 
 import time
 from copy import deepcopy
+from cache_system import TranspositionTable, CacheManager
+from optimizations import MoveOrderingOptimizer, LateMovePruning, NullMovePruning, AspirationWindow
+from advanced_search import EndgameKnowledge, SearchExtensions, SearchOptimizer
 
 
 class AI:
@@ -27,11 +36,20 @@ class AI:
             "expert": 5
         }.get(difficulty, 3)
 
-        # Transposition table for caching evaluated positions
-        self.transposition_table = {}
+        # Enhanced transposition table with replacement strategy
+        self.transposition_table = TranspositionTable(size_mb=128)
 
-        # Killer moves heuristic (moves that caused cutoffs)
-        self.killer_moves = [[None, None] for _ in range(10)]
+        # Cache manager for all caching systems
+        self.cache_manager = CacheManager()
+
+        # Advanced move ordering with killer moves, history, and PV
+        self.move_ordering = MoveOrderingOptimizer()
+
+        # Endgame knowledge
+        self.endgame_knowledge = EndgameKnowledge()
+
+        # Search optimizer (extensions, etc.)
+        self.search_optimizer = SearchOptimizer()
 
         # Material values (centipawns)
         self.piece_values = {
@@ -168,6 +186,12 @@ class AI:
             else:
                 return 0  # Draw
 
+        # Check for known endgame positions
+        if self.endgame_knowledge.is_simple_endgame(self.board):
+            endgame_score = self.endgame_knowledge.evaluate_known_endgame(self.board)
+            if endgame_score is not None:
+                return endgame_score
+
         score = 0
 
         # Material and positional evaluation
@@ -193,34 +217,12 @@ class AI:
 
         return score
 
-    def order_moves(self, moves_with_positions):
+    def order_moves(self, moves_with_positions, depth):
         '''
-        Order moves for better alpha-beta pruning
-        Priority: Captures (MVV-LVA) > Killer moves > Other moves
+        Order moves for better alpha-beta pruning using advanced heuristics
+        Priority: PV > Hash > Captures (MVV-LVA) > Killers > History > Other
         '''
-        def move_score(move_data):
-            move, pos = move_data
-            score = 0
-
-            # Check if move is a capture
-            target_square = self.board.state[move["to"][0]][move["to"][1]]
-            if target_square:
-                # MVV-LVA: Most Valuable Victim - Least Valuable Attacker
-                moving_piece = self.board.state[pos[0]][pos[1]]
-                victim_value = self.piece_values[target_square.type]
-                attacker_value = self.piece_values[moving_piece.type]
-                score += (victim_value - attacker_value / 10) * 10000
-
-            # Check for special moves
-            if move["special"] in ["promotion", "KSC", "QSC"]:
-                score += 8000
-
-            # Check if it's a killer move
-            # (Simplified - full implementation would check against killer_moves table)
-
-            return score
-
-        return sorted(moves_with_positions, key=move_score, reverse=True)
+        return self.move_ordering.order_moves(moves_with_positions, depth, self.board)
 
     def get_all_moves(self):
         '''Get all legal moves for the current player'''
@@ -257,7 +259,8 @@ class AI:
         capture_moves = [(move, pos) for move, pos in all_moves
                         if self.board.state[move["to"][0]][move["to"][1]] is not None]
 
-        for move, pos in self.order_moves(capture_moves):
+        # Order captures by MVV-LVA (depth 0 for quiescence)
+        for move, pos in self.order_moves(capture_moves, 0):
             # Make move
             initial_state = self._save_state()
             self.board.move(pos, move)
@@ -274,20 +277,24 @@ class AI:
 
         return alpha
 
-    def alpha_beta(self, depth, alpha, beta, maximizing_player):
+    def alpha_beta(self, depth, alpha, beta, maximizing_player, null_move_allowed=True, last_move=None):
         '''
-        Alpha-Beta pruning search algorithm
-        Returns the best evaluation score for the current position
+        Alpha-Beta pruning search algorithm with advanced optimizations:
+        - Enhanced transposition table
+        - Null move pruning
+        - Late move reduction (LMR)
+        - Search extensions
         '''
         self.nodes_searched += 1
+        original_alpha = alpha
+        in_check = self.board.check
 
         # Check transposition table
         position_hash = self._hash_position()
-        if position_hash in self.transposition_table:
-            cached_depth, cached_score = self.transposition_table[position_hash]
-            if cached_depth >= depth:
-                self.transposition_hits += 1
-                return cached_score
+        tt_entry = self.transposition_table.probe(position_hash, depth, alpha, beta)
+        if tt_entry[2]:  # Hit
+            self.transposition_hits += 1
+            return tt_entry[0]
 
         # Terminal node (depth 0 or game over)
         if depth == 0:
@@ -304,6 +311,20 @@ class AI:
             else:
                 return 0  # Draw
 
+        # Null Move Pruning
+        if null_move_allowed and NullMovePruning.can_use_null_move(self.board, depth, in_check):
+            # Make null move (skip turn)
+            initial_state = self._save_state()
+            self.board.to_move = self.opponent if self.board.to_move == self.color else self.color
+
+            reduction = NullMovePruning.get_null_move_reduction(depth)
+            score = -self.alpha_beta(depth - 1 - reduction, -beta, -beta + 1, not maximizing_player, False, None)
+
+            self._restore_state(initial_state)
+
+            if score >= beta:
+                return beta
+
         # Get all legal moves
         all_moves = self.get_all_moves()
 
@@ -317,62 +338,135 @@ class AI:
                 return 0
 
         # Order moves for better pruning
-        ordered_moves = self.order_moves(all_moves)
+        ordered_moves = self.order_moves(all_moves, depth)
+
+        best_move = None
+        move_count = 0
 
         if maximizing_player:
             max_eval = float('-inf')
             for move, pos in ordered_moves:
+                move_count += 1
+
                 # Save state before move
                 initial_state = self._save_state()
 
                 # Make move
                 self.board.move(pos, move)
 
-                # Recursive call
-                eval_score = self.alpha_beta(depth - 1, alpha, beta, False)
+                # Calculate search extension
+                extension = self.search_optimizer.should_extend(
+                    self.board, move, pos, depth, self.board.check, last_move
+                )
+
+                # Late Move Reduction
+                reduction = 0
+                if LateMovePruning.should_reduce(move, pos, move_count, depth, in_check):
+                    reduction = LateMovePruning.get_reduction(move_count, depth)
+
+                # Recursive call with extension and reduction
+                new_depth = depth - 1 + extension - reduction
+                eval_score = self.alpha_beta(new_depth, alpha, beta, False, True, move)
+
+                # If LMR was used and failed high, re-search at full depth
+                if reduction > 0 and eval_score > alpha:
+                    eval_score = self.alpha_beta(depth - 1 + extension, alpha, beta, False, True, move)
 
                 # Undo move
                 self._restore_state(initial_state)
 
-                max_eval = max(max_eval, eval_score)
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_move = (move, pos)
+
                 alpha = max(alpha, eval_score)
 
                 if beta <= alpha:
                     self.cutoffs += 1
+                    # Update killer moves and history
+                    self.move_ordering.update_killer(move, pos, depth)
+                    self.move_ordering.update_history(move, pos, depth)
                     break  # Beta cutoff
 
             # Store in transposition table
-            self.transposition_table[position_hash] = (depth, max_eval)
+            if max_eval <= original_alpha:
+                flag = TranspositionTable.UPPER_BOUND
+            elif max_eval >= beta:
+                flag = TranspositionTable.LOWER_BOUND
+            else:
+                flag = TranspositionTable.EXACT
+
+            self.transposition_table.store(position_hash, depth, max_eval, flag, best_move)
+
+            # Store PV move
+            if best_move:
+                self.move_ordering.store_pv_move(best_move[0], best_move[1], depth)
+
             return max_eval
         else:
             min_eval = float('inf')
             for move, pos in ordered_moves:
+                move_count += 1
+
                 # Save state before move
                 initial_state = self._save_state()
 
                 # Make move
                 self.board.move(pos, move)
 
-                # Recursive call
-                eval_score = self.alpha_beta(depth - 1, alpha, beta, True)
+                # Calculate search extension
+                extension = self.search_optimizer.should_extend(
+                    self.board, move, pos, depth, self.board.check, last_move
+                )
+
+                # Late Move Reduction
+                reduction = 0
+                if LateMovePruning.should_reduce(move, pos, move_count, depth, in_check):
+                    reduction = LateMovePruning.get_reduction(move_count, depth)
+
+                # Recursive call with extension and reduction
+                new_depth = depth - 1 + extension - reduction
+                eval_score = self.alpha_beta(new_depth, alpha, beta, True, True, move)
+
+                # If LMR was used and failed low, re-search at full depth
+                if reduction > 0 and eval_score < beta:
+                    eval_score = self.alpha_beta(depth - 1 + extension, alpha, beta, True, True, move)
 
                 # Undo move
                 self._restore_state(initial_state)
 
-                min_eval = min(min_eval, eval_score)
+                if eval_score < min_eval:
+                    min_eval = eval_score
+                    best_move = (move, pos)
+
                 beta = min(beta, eval_score)
 
                 if beta <= alpha:
                     self.cutoffs += 1
+                    # Update killer moves and history
+                    self.move_ordering.update_killer(move, pos, depth)
+                    self.move_ordering.update_history(move, pos, depth)
                     break  # Alpha cutoff
 
             # Store in transposition table
-            self.transposition_table[position_hash] = (depth, min_eval)
+            if min_eval <= original_alpha:
+                flag = TranspositionTable.UPPER_BOUND
+            elif min_eval >= beta:
+                flag = TranspositionTable.LOWER_BOUND
+            else:
+                flag = TranspositionTable.EXACT
+
+            self.transposition_table.store(position_hash, depth, min_eval, flag, best_move)
+
+            # Store PV move
+            if best_move:
+                self.move_ordering.store_pv_move(best_move[0], best_move[1], depth)
+
             return min_eval
 
     def get_best_move(self):
         '''
-        Find the best move using iterative deepening and alpha-beta pruning
+        Find the best move using iterative deepening with aspiration windows
         '''
         print(f"\n=== AI ({self.color}) thinking (Difficulty: {self.difficulty}, Depth: {self.max_depth}) ===")
         start_time = time.time()
@@ -382,70 +476,97 @@ class AI:
         self.cutoffs = 0
         self.transposition_hits = 0
 
+        # Increment generation for new search
+        self.transposition_table.new_search()
+
         best_move = None
         best_pos = None
+        prev_score = 0
 
         # Determine if we're maximizing (white) or minimizing (black)
         maximizing = (self.color == "white")
 
-        # Iterative deepening
+        # Iterative deepening with aspiration windows
         for current_depth in range(1, self.max_depth + 1):
             best_score = float('-inf') if maximizing else float('inf')
             current_best_move = None
             current_best_pos = None
 
-            all_moves = self.get_all_moves()
-            ordered_moves = self.order_moves(all_moves)
+            # Get aspiration window based on previous iteration
+            alpha, beta = AspirationWindow.get_initial_window(prev_score, current_depth)
 
-            for move, pos in ordered_moves:
-                # Save state
-                initial_state = self._save_state()
+            # Re-search with wider window if needed
+            search_iterations = 0
+            while True:
+                search_iterations += 1
 
-                # Make move
-                self.board.move(pos, move)
+                all_moves = self.get_all_moves()
+                ordered_moves = self.order_moves(all_moves, current_depth)
 
-                # Evaluate
-                if maximizing:
-                    score = self.alpha_beta(current_depth - 1, float('-inf'), float('inf'), False)
-                    if score > best_score:
-                        best_score = score
-                        current_best_move = move
-                        current_best_pos = pos
+                for move, pos in ordered_moves:
+                    # Save state
+                    initial_state = self._save_state()
+
+                    # Make move
+                    self.board.move(pos, move)
+
+                    # Evaluate
+                    if maximizing:
+                        score = self.alpha_beta(current_depth - 1, alpha, beta, False, True, None)
+                        if score > best_score:
+                            best_score = score
+                            current_best_move = move
+                            current_best_pos = pos
+                    else:
+                        score = self.alpha_beta(current_depth - 1, alpha, beta, True, True, None)
+                        if score < best_score:
+                            best_score = score
+                            current_best_move = move
+                            current_best_pos = pos
+
+                    # Restore state
+                    self._restore_state(initial_state)
+
+                # Check if we need to re-search with wider window
+                if best_score <= alpha:
+                    # Fail low - widen alpha
+                    alpha, beta = AspirationWindow.widen_window(alpha, beta, "low")
+                    continue
+                elif best_score >= beta:
+                    # Fail high - widen beta
+                    alpha, beta = AspirationWindow.widen_window(alpha, beta, "high")
+                    continue
                 else:
-                    score = self.alpha_beta(current_depth - 1, float('-inf'), float('inf'), True)
-                    if score < best_score:
-                        best_score = score
-                        current_best_move = move
-                        current_best_pos = pos
-
-                # Restore state
-                self._restore_state(initial_state)
+                    # Score within window - done
+                    break
 
             # Update best move for this iteration
             if current_best_move:
                 best_move = current_best_move
                 best_pos = current_best_pos
-                print(f"Depth {current_depth}: Score = {best_score}, Move = {best_pos} -> {best_move['to']}")
+                prev_score = best_score
+                window_str = f" (window iterations: {search_iterations})" if search_iterations > 1 else ""
+                print(f"Depth {current_depth}: Score = {best_score}, Move = {best_pos} -> {best_move['to']}{window_str}")
 
         elapsed_time = time.time() - start_time
+        nps = int(self.nodes_searched / elapsed_time) if elapsed_time > 0 else 0
+
         print(f"Search completed in {elapsed_time:.2f}s")
-        print(f"Nodes searched: {self.nodes_searched}")
-        print(f"Cutoffs: {self.cutoffs}")
-        print(f"Transposition hits: {self.transposition_hits}")
+        print(f"Nodes searched: {self.nodes_searched:,}")
+        print(f"Nodes per second: {nps:,}")
+        print(f"Cutoffs: {self.cutoffs:,}")
+        print(f"Transposition hits: {self.transposition_hits:,}")
+        if self.transposition_table.lookups > 0:
+            hit_rate = self.transposition_hits / self.transposition_table.lookups
+            print(f"TT hit rate: {hit_rate:.1%}")
         print(f"Best move: {best_pos} -> {best_move['to']}\n")
 
         return best_move, best_pos
 
     def _hash_position(self):
-        '''Create a hash of the current position for transposition table'''
-        position = []
-        for row in range(8):
-            for col in range(8):
-                piece = self.board.state[row][col]
-                if piece:
-                    position.append((row, col, piece.color, piece.type))
-        position.append(self.board.to_move)
-        return tuple(position)
+        '''Create a hash of the current position for transposition table using Zobrist hashing'''
+        # Use fast Zobrist hash from board
+        return self.board.position_hash
 
     def _save_state(self):
         '''Save the current board state'''
@@ -459,7 +580,8 @@ class AI:
             'double_check': self.board.double_check,
             'game_over': self.board.game_over,
             'game_result': self.board.game_result,
-            'move_log_len': len(self.board.move_log)
+            'move_log_len': len(self.board.move_log),
+            'position_hash': self.board.position_hash
         }
 
     def _restore_state(self, state):
@@ -473,6 +595,7 @@ class AI:
         self.board.double_check = state['double_check']
         self.board.game_over = state['game_over']
         self.board.game_result = state['game_result']
+        self.board.position_hash = state['position_hash']
 
         # Remove any moves added during the search
         while len(self.board.move_log) > state['move_log_len']:
