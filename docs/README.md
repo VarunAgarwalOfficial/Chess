@@ -115,17 +115,17 @@ Challenge the computer opponent with three difficulty levels:
 ### Architecture
 ```
 Chess/
-├── __init__.py           # Main game loop and UI
-├── Game/
-│   ├── __init__.py       # Board class and game state
-│   ├── Piece.py          # Piece data structure
-│   ├── MoveGenerator.py  # Move generation for all pieces
-│   ├── CheckFunctions.py # Check and pin detection
-│   └── GameEndFunctions.py # Checkmate/stalemate detection
-├── ai.py                 # Computer opponent engine
-├── opening_book.py       # Opening recognition
-├── tests.py              # Comprehensive test suite
-└── images/               # Piece graphics
+|-- __init__.py           # Main game loop and UI
+|-- Game/
+|   |-- __init__.py       # Board class and game state
+|   |-- Piece.py          # Piece data structure
+|   |-- MoveGenerator.py  # Move generation for all pieces
+|   |-- CheckFunctions.py # Check and pin detection
+|   +-- GameEndFunctions.py # Checkmate/stalemate detection
+|-- ai.py                 # Computer opponent engine
+|-- opening_book.py       # Opening recognition
+|-- tests.py              # Comprehensive test suite
++-- images/               # Piece graphics
 ```
 
 ### Computer Opponent Implementation
