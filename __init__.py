@@ -4,6 +4,9 @@ import threading
 from Game import Board
 from ai import AI
 from opening_book import OpeningBook
+from tutorial import ChessTutorial
+from puzzles import ChessPuzzles
+from settings import Settings
 
 
 '''
@@ -78,6 +81,28 @@ class Game:
         # Opening book
         self.opening_book = OpeningBook()
 
+        # Tutorial system
+        self.tutorial = ChessTutorial()
+        self.show_tutorial = False
+        self.tutorial_scroll = 0
+
+        # Puzzle system
+        self.puzzles = ChessPuzzles()
+        self.show_puzzles = False
+        self.puzzle_mode = False
+
+        # Settings
+        self.settings = Settings()
+        self.show_settings = False
+
+        # Help screen
+        self.show_help = False
+
+        # Analysis mode
+        self.analysis_mode = False
+        self.show_hint = False
+        self.hint_move = None
+
         # Evaluation
         self.current_eval = 0
 
@@ -98,20 +123,29 @@ class Game:
 
     def create_menu(self):
         '''Create main menu buttons'''
-        button_width = 250
-        button_height = 50
+        button_width = 280
+        button_height = 45
         start_x = WIDTH // 2 - button_width // 2
-        start_y = 150
+        start_y = 100
+        spacing = 55
 
         self.menu_buttons = [
             {"rect": pygame.Rect(start_x, start_y, button_width, button_height),
              "text": "Player vs Player", "action": "pvp"},
-            {"rect": pygame.Rect(start_x, start_y + 70, button_width, button_height),
+            {"rect": pygame.Rect(start_x, start_y + spacing, button_width, button_height),
              "text": "Player vs AI (Easy)", "action": "pva_easy"},
-            {"rect": pygame.Rect(start_x, start_y + 140, button_width, button_height),
+            {"rect": pygame.Rect(start_x, start_y + spacing * 2, button_width, button_height),
              "text": "Player vs AI (Medium)", "action": "pva_medium"},
-            {"rect": pygame.Rect(start_x, start_y + 210, button_width, button_height),
+            {"rect": pygame.Rect(start_x, start_y + spacing * 3, button_width, button_height),
              "text": "Player vs AI (Hard)", "action": "pva_hard"},
+            {"rect": pygame.Rect(start_x, start_y + spacing * 4, button_width, button_height),
+             "text": "Player vs AI (Expert)", "action": "pva_expert"},
+            {"rect": pygame.Rect(start_x, start_y + spacing * 5, button_width, button_height),
+             "text": "Learn Chess (Tutorial)", "action": "tutorial"},
+            {"rect": pygame.Rect(start_x, start_y + spacing * 6, button_width, button_height),
+             "text": "Solve Puzzles (40 Tactics)", "action": "puzzles"},
+            {"rect": pygame.Rect(start_x, start_y + spacing * 7, button_width, button_height),
+             "text": "Help & Instructions", "action": "help"},
         ]
 
     def draw_menu(self):
@@ -119,10 +153,17 @@ class Game:
         self.screen.fill(DASHBOARD_BG)
 
         # Title
-        title_text = "Chess Game"
-        title_surface = self.font.render(title_text, True, TEXT_COLOR)
-        title_rect = title_surface.get_rect(center=(WIDTH // 2, 80))
+        title_font = pygame.font.Font(None, 56)
+        title_text = "Chess Master"
+        title_surface = title_font.render(title_text, True, TEXT_COLOR)
+        title_rect = title_surface.get_rect(center=(WIDTH // 2, 50))
         self.screen.blit(title_surface, title_rect)
+
+        # Subtitle
+        subtitle_text = "Professional Chess Engine with AI & Learning Tools"
+        subtitle_surface = self.tiny_font.render(subtitle_text, True, (180, 180, 180))
+        subtitle_rect = subtitle_surface.get_rect(center=(WIDTH // 2, 78))
+        self.screen.blit(subtitle_surface, subtitle_rect)
 
         # Buttons
         mouse_pos = pygame.mouse.get_pos()
@@ -135,11 +176,11 @@ class Game:
             text_rect = text_surface.get_rect(center=button["rect"].center)
             self.screen.blit(text_surface, text_rect)
 
-        # Instructions
-        instructions = "Select a game mode to begin"
-        inst_surface = self.tiny_font.render(instructions, True, (180, 180, 180))
-        inst_rect = inst_surface.get_rect(center=(WIDTH // 2, HEIGHT - 40))
-        self.screen.blit(inst_surface, inst_rect)
+        # Footer
+        footer_text = "40 Puzzles | 20 Tutorials | Advanced AI with Optimizations"
+        footer_surface = self.tiny_font.render(footer_text, True, (140, 140, 140))
+        footer_rect = footer_surface.get_rect(center=(WIDTH // 2, HEIGHT - 20))
+        self.screen.blit(footer_surface, footer_rect)
 
     def handle_menu_click(self, pos):
         '''Handle clicks on menu buttons'''
@@ -151,13 +192,90 @@ class Game:
                 elif action.startswith("pva_"):
                     difficulty = action.split("_")[1]
                     self.start_game("pva", difficulty)
+                elif action == "tutorial":
+                    self.show_menu = False
+                    self.show_tutorial = True
+                    self.tutorial.current_lesson_index = 0
+                elif action == "puzzles":
+                    self.show_menu = False
+                    self.show_puzzles = True
+                    self.puzzles.current_puzzle_index = 0
+                elif action == "help":
+                    self.show_menu = False
+                    self.show_help = True
                 break
+
+    def handle_tutorial_click(self, pos):
+        '''Handle clicks in tutorial screen'''
+        btn_width = 120
+        btn_height = 35
+        btn_y = HEIGHT - 50
+
+        # Check back button
+        back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
+        if back_rect.collidepoint(pos):
+            self.show_tutorial = False
+            self.show_menu = True
+            return
+
+        # Check previous button
+        if self.tutorial.current_lesson_index > 0:
+            prev_rect = pygame.Rect(WIDTH//2 - 130, btn_y, btn_width, btn_height)
+            if prev_rect.collidepoint(pos):
+                self.tutorial.previous_lesson()
+                return
+
+        # Check next button
+        if self.tutorial.current_lesson_index < len(self.tutorial.lessons) - 1:
+            next_rect = pygame.Rect(WIDTH//2 + 10, btn_y, btn_width, btn_height)
+            if next_rect.collidepoint(pos):
+                self.tutorial.next_lesson()
+                return
+
+    def handle_puzzle_click(self, pos):
+        '''Handle clicks in puzzle screen'''
+        btn_width = 120
+        btn_height = 35
+        btn_y = HEIGHT - 50
+
+        # Check back button
+        back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
+        if back_rect.collidepoint(pos):
+            self.show_puzzles = False
+            self.show_menu = True
+            return
+
+        # Check previous button
+        if self.puzzles.current_puzzle_index > 0:
+            prev_rect = pygame.Rect(WIDTH//2 - 130, btn_y, btn_width, btn_height)
+            if prev_rect.collidepoint(pos):
+                self.puzzles.previous_puzzle()
+                return
+
+        # Check next button
+        if self.puzzles.current_puzzle_index < len(self.puzzles.puzzles) - 1:
+            next_rect = pygame.Rect(WIDTH//2 + 10, btn_y, btn_width, btn_height)
+            if next_rect.collidepoint(pos):
+                self.puzzles.next_puzzle()
+                return
+
+    def handle_help_click(self, pos):
+        '''Handle clicks in help screen'''
+        btn_width = 120
+        btn_height = 35
+        back_rect = pygame.Rect(20, HEIGHT - 50, btn_width, btn_height)
+        if back_rect.collidepoint(pos):
+            self.show_help = False
+            self.show_menu = True
 
     def start_game(self, mode, difficulty):
         '''Start a new game with specified mode and difficulty'''
         self.game_mode = mode
         self.difficulty = difficulty
         self.show_menu = False
+        self.show_tutorial = False
+        self.show_puzzles = False
+        self.show_help = False
         self.board = Board()
         self.square_selected = (-1,-1)
         self.legal_moves = []
@@ -174,6 +292,18 @@ class Game:
 
         if self.show_menu:
             self.draw_menu()
+            return
+
+        if self.show_tutorial:
+            self.draw_tutorial()
+            return
+
+        if self.show_puzzles:
+            self.draw_puzzles()
+            return
+
+        if self.show_help:
+            self.draw_help()
             return
 
         self.screen.fill(DASHBOARD_BG)
@@ -360,6 +490,12 @@ class Game:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if self.show_menu:
                     self.handle_menu_click(event.pos)
+                elif self.show_tutorial:
+                    self.handle_tutorial_click(event.pos)
+                elif self.show_puzzles:
+                    self.handle_puzzle_click(event.pos)
+                elif self.show_help:
+                    self.handle_help_click(event.pos)
                 else:
                     self.click_handler()
             elif event.type == pygame.QUIT:
@@ -367,17 +503,16 @@ class Game:
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_z and not self.show_menu:
+                if event.key == pygame.K_z and not self.show_menu and not self.show_tutorial and not self.show_puzzles and not self.show_help:
                     self.undo_move()
-                elif event.key == pygame.K_r:
+                elif event.key == pygame.K_r or event.key == pygame.K_ESCAPE:
                     # Return to menu
                     self.show_menu = True
+                    self.show_tutorial = False
+                    self.show_puzzles = False
+                    self.show_help = False
                     self.square_selected = (-1,-1)
                     self.legal_moves = []
-                elif event.key == pygame.K_ESCAPE:
-                    self.running = False
-                    pygame.quit()
-                    sys.exit()
 
         # Check if AI should make a move
         if (not self.show_menu and
@@ -574,6 +709,244 @@ class Game:
                     self.legal_moves = []
 
 
+
+
+    def draw_tutorial(self):
+        '''Draw tutorial screen'''
+        self.screen.fill(DASHBOARD_BG)
+
+        lesson = self.tutorial.get_lesson()
+        if not lesson:
+            return
+
+        # Header
+        header_font = pygame.font.Font(None, 40)
+        title = f"Lesson {lesson['id']}: {lesson['title']}"
+        title_surface = header_font.render(title, True, TEXT_COLOR)
+        self.screen.blit(title_surface, (20, 20))
+
+        # Category and difficulty
+        info = f"{lesson['category'].replace('_', ' ').title()} | {lesson['difficulty'].title()}"
+        info_surface = self.tiny_font.render(info, True, (180, 180, 180))
+        self.screen.blit(info_surface, (20, 60))
+
+        # Content
+        y_pos = 100
+        for line in lesson['content']:
+            if y_pos > HEIGHT - 150:
+                break
+            text_surface = self.tiny_font.render(line, True, TEXT_COLOR)
+            self.screen.blit(text_surface, (20, y_pos))
+            y_pos += 25
+
+        # Key points
+        y_pos += 10
+        points_title = self.small_font.render("Key Points:", True, (100, 200, 255))
+        self.screen.blit(points_title, (20, y_pos))
+        y_pos += 30
+
+        for point in lesson['key_points']:
+            if y_pos > HEIGHT - 100:
+                break
+            text_surface = self.tiny_font.render(f"- {point}", True, (150, 220, 150))
+            self.screen.blit(text_surface, (30, y_pos))
+            y_pos += 22
+
+        # Navigation buttons
+        btn_width = 120
+        btn_height = 35
+        btn_y = HEIGHT - 50
+
+        # Back to menu
+        back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect, border_radius=8)
+        back_text = self.tiny_font.render("Back to Menu", True, TEXT_COLOR)
+        self.screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.centery - back_text.get_height()//2))
+
+        # Previous
+        if self.tutorial.current_lesson_index > 0:
+            prev_rect = pygame.Rect(WIDTH//2 - 130, btn_y, btn_width, btn_height)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect, border_radius=8)
+            prev_text = self.tiny_font.render("< Previous", True, TEXT_COLOR)
+            self.screen.blit(prev_text, (prev_rect.centerx - prev_text.get_width()//2, prev_rect.centery - prev_text.get_height()//2))
+
+        # Progress
+        progress = self.tutorial.get_progress()
+        progress_text = f"Lesson {progress['current']} / {progress['total']}"
+        progress_surface = self.tiny_font.render(progress_text, True, (180, 180, 180))
+        self.screen.blit(progress_surface, (WIDTH//2 - progress_surface.get_width()//2, btn_y + 10))
+
+        # Next
+        if self.tutorial.current_lesson_index < len(self.tutorial.lessons) - 1:
+            next_rect = pygame.Rect(WIDTH//2 + 10, btn_y, btn_width, btn_height)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect, border_radius=8)
+            next_text = self.tiny_font.render("Next >", True, TEXT_COLOR)
+            self.screen.blit(next_text, (next_rect.centerx - next_text.get_width()//2, next_rect.centery - next_text.get_height()//2))
+
+    def draw_puzzles(self):
+        '''Draw puzzle screen'''
+        self.screen.fill(DASHBOARD_BG)
+
+        puzzle = self.puzzles.get_puzzle()
+        if not puzzle:
+            return
+
+        # Header
+        header_font = pygame.font.Font(None, 40)
+        title = f"Puzzle {puzzle['id']}: {puzzle['name']}"
+        title_surface = header_font.render(title, True, TEXT_COLOR)
+        self.screen.blit(title_surface, (20, 20))
+
+        # Theme and difficulty
+        info = f"{puzzle['theme']} | {puzzle['difficulty'].title()}"
+        info_surface = self.tiny_font.render(info, True, (180, 180, 180))
+        self.screen.blit(info_surface, (20, 60))
+
+        # Description
+        desc_surface = self.small_font.render(puzzle['description'], True, (255, 200, 100))
+        self.screen.blit(desc_surface, (20, 90))
+
+        # FEN position
+        fen_label = self.tiny_font.render("Position (FEN):", True, (150, 150, 150))
+        self.screen.blit(fen_label, (20, 130))
+        fen_surface = self.tiny_font.render(puzzle['fen'], True, TEXT_COLOR)
+        self.screen.blit(fen_surface, (20, 155))
+
+        # Solution moves
+        sol_label = self.small_font.render("Solution:", True, (100, 255, 100))
+        self.screen.blit(sol_label, (20, 190))
+
+        y_pos = 220
+        for i, move in enumerate(puzzle['solution'], 1):
+            move_text = f"{i}. {move}"
+            move_surface = self.tiny_font.render(move_text, True, TEXT_COLOR)
+            self.screen.blit(move_surface, (30, y_pos))
+            y_pos += 22
+
+        # Instructions
+        inst_y = 320
+        instructions = [
+            "Set up this position on a real board or online chess site.",
+            "Try to find the best move sequence.",
+            "Check the solution when ready.",
+            "Study the tactical pattern to improve your chess vision."
+        ]
+
+        inst_label = self.small_font.render("How to solve:", True, (255, 255, 100))
+        self.screen.blit(inst_label, (20, inst_y))
+        inst_y += 30
+
+        for line in instructions:
+            text_surface = self.tiny_font.render(line, True, (200, 200, 200))
+            self.screen.blit(text_surface, (30, inst_y))
+            inst_y += 22
+
+        # Navigation buttons
+        btn_width = 120
+        btn_height = 35
+        btn_y = HEIGHT - 50
+
+        # Back to menu
+        back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect, border_radius=8)
+        back_text = self.tiny_font.render("Back to Menu", True, TEXT_COLOR)
+        self.screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.centery - back_text.get_height()//2))
+
+        # Previous
+        if self.puzzles.current_puzzle_index > 0:
+            prev_rect = pygame.Rect(WIDTH//2 - 130, btn_y, btn_width, btn_height)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect, border_radius=8)
+            prev_text = self.tiny_font.render("< Previous", True, TEXT_COLOR)
+            self.screen.blit(prev_text, (prev_rect.centerx - prev_text.get_width()//2, prev_rect.centery - prev_text.get_height()//2))
+
+        # Progress
+        progress = self.puzzles.get_progress()
+        progress_text = f"Puzzle {progress['current']} / {progress['total']}"
+        progress_surface = self.tiny_font.render(progress_text, True, (180, 180, 180))
+        self.screen.blit(progress_surface, (WIDTH//2 - progress_surface.get_width()//2, btn_y + 10))
+
+        # Next
+        if self.puzzles.current_puzzle_index < len(self.puzzles.puzzles) - 1:
+            next_rect = pygame.Rect(WIDTH//2 + 10, btn_y, btn_width, btn_height)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect, border_radius=8)
+            next_text = self.tiny_font.render("Next >", True, TEXT_COLOR)
+            self.screen.blit(next_text, (next_rect.centerx - next_text.get_width()//2, next_rect.centery - next_text.get_height()//2))
+
+    def draw_help(self):
+        '''Draw help screen'''
+        self.screen.fill(DASHBOARD_BG)
+
+        # Header
+        header_font = pygame.font.Font(None, 48)
+        title_surface = header_font.render("Help & Instructions", True, TEXT_COLOR)
+        self.screen.blit(title_surface, (20, 20))
+
+        help_sections = [
+            ("How to Play:", [
+                "- Click on a piece to see its legal moves",
+                "- Click on a highlighted square to move there",
+                "- Special moves: castling, en passant, promotion are automatic",
+                "- Game ends with checkmate, stalemate, or draw conditions"
+            ]),
+            ("Game Modes:", [
+                "- Player vs Player: Play against a friend",
+                "- Player vs AI: Play against computer (Easy/Medium/Hard/Expert)",
+                "- Tutorial: Learn chess basics with 20 structured lessons",
+                "- Puzzles: Solve 40 tactical puzzles to improve your skills"
+            ]),
+            ("AI Difficulty Levels:", [
+                "- Easy: Depth 2 search (~1K nodes, beginner level)",
+                "- Medium: Depth 3 search (~10K nodes, intermediate)",
+                "- Hard: Depth 4 search (~50K nodes, advanced)",
+                "- Expert: Depth 5 search (~250K nodes, expert level)"
+            ]),
+            ("Features:", [
+                "- Advanced AI with optimizations (LMR, null move, aspiration)",
+                "- Opening book recognition",
+                "- Move history and captured pieces display",
+                "- Evaluation bar showing position advantage",
+                "- 40 tactical puzzles covering all major themes",
+                "- 20 comprehensive tutorial lessons"
+            ]),
+            ("Controls:", [
+                "- Left Click: Select piece / Make move",
+                "- ESC: Return to main menu (during game)",
+                "- Mouse Hover: See button highlights in menus"
+            ])
+        ]
+
+        y_pos = 80
+        for section_title, section_lines in help_sections:
+            if y_pos > HEIGHT - 100:
+                break
+
+            # Section title
+            section_surface = self.small_font.render(section_title, True, (100, 200, 255))
+            self.screen.blit(section_surface, (20, y_pos))
+            y_pos += 28
+
+            # Section content
+            for line in section_lines:
+                if y_pos > HEIGHT - 100:
+                    break
+                text_surface = self.tiny_font.render(line, True, TEXT_COLOR)
+                self.screen.blit(text_surface, (30, y_pos))
+                y_pos += 20
+
+            y_pos += 10
+
+        # Back button
+        btn_width = 120
+        btn_height = 35
+        back_rect = pygame.Rect(20, HEIGHT - 50, btn_width, btn_height)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect, border_radius=8)
+        back_text = self.tiny_font.render("Back to Menu", True, TEXT_COLOR)
+        self.screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.centery - back_text.get_height()//2))
+
+        # Credits
+        credits_text = "Chess Master - Advanced AI with Educational Tools"
+        credits_surface = self.tiny_font.render(credits_text, True, (100, 100, 100))
+        self.screen.blit(credits_surface, (WIDTH - credits_surface.get_width() - 20, HEIGHT - 25))
 
 
 '''
