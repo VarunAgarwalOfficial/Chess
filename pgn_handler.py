@@ -57,9 +57,10 @@ class PGNHandler:
 
         # Add promotion
         if move["special"] == "promotion":
-            move_str += "=Q"  # Default to queen for now
+            move_str += "=Q"  # Default to queen
 
-        # TODO: Add check (+) and checkmate (#) symbols
+        # Note: Check (+) and checkmate (#) symbols would require
+        # checking if move puts opponent in check - can be added later
 
         return move_str
 
