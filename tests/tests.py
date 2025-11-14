@@ -3,9 +3,13 @@ Comprehensive tests for Chess game
 Tests checkmate, stalemate, AI, and game mechanics
 '''
 
-from Game import Board
-from Game.Piece import Piece
-from ai import AI
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from game import Board
+from game.Piece import Piece
+from ai.ai import AI
 
 def test_checkmate():
     '''Test checkmate detection'''
