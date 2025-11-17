@@ -184,6 +184,11 @@ class Game:
         self.puzzles = ChessPuzzles()
         self.show_puzzles = False
         self.puzzle_mode = False
+        self.puzzle_board = None
+        self.puzzle_feedback = ""
+        self.puzzle_solved = False
+        self.puzzle_selected_square = (-1, -1)
+        self.puzzle_legal_moves = []
 
         # Settings
         self.settings = Settings()
@@ -356,11 +361,65 @@ class Game:
         btn_height = 35
         btn_y = HEIGHT - 50
 
-        # Check back button
+        # Check back button (always visible)
         back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
         if back_rect.collidepoint(pos):
             self.show_puzzles = False
             self.show_menu = True
+            self.puzzle_mode = False
+            self.puzzle_board = None
+            self.puzzle_feedback = ""
+            self.puzzle_solved = False
+            self.puzzle_selected_square = (-1, -1)
+            self.puzzle_legal_moves = []
+            return
+
+        # If in puzzle mode (trying to solve), handle special buttons
+        if self.puzzle_mode:
+            # "Back to View" button
+            back_to_view_rect = pygame.Rect(WIDTH - 160, 20, 140, 40)
+            if back_to_view_rect.collidepoint(pos):
+                self.puzzle_mode = False
+                self.puzzle_board = None
+                self.puzzle_feedback = ""
+                self.puzzle_solved = False
+                self.puzzle_selected_square = (-1, -1)
+                self.puzzle_legal_moves = []
+                self.puzzles.reset_puzzle()
+                return
+
+            # "Hint" button
+            hint_rect = pygame.Rect(WIDTH - 160, 70, 140, 40)
+            if hint_rect.collidepoint(pos):
+                hint = self.puzzles.get_hint()
+                self.puzzle_feedback = hint
+                return
+
+            # "Reset" button
+            reset_rect = pygame.Rect(WIDTH - 160, 120, 140, 40)
+            if reset_rect.collidepoint(pos):
+                self.reset_puzzle()
+                return
+
+            # Handle board clicks
+            board_x = 40
+            board_y = 80
+            board_size = 480
+            if (board_x <= pos[0] <= board_x + board_size and
+                board_y <= pos[1] <= board_y + board_size):
+                # Convert screen position to board position
+                square_size = board_size // 8
+                col = (pos[0] - board_x) // square_size
+                row = (pos[1] - board_y) // square_size
+                if 0 <= row < 8 and 0 <= col < 8:
+                    self.handle_puzzle_board_click((row, col))
+            return
+
+        # Not in puzzle mode - show navigation and "Try Puzzle" button
+        # Check "Try Puzzle" button
+        try_rect = pygame.Rect(40, HEIGHT - 100, 200, 45)
+        if try_rect.collidepoint(pos):
+            self.start_puzzle()
             return
 
         # Check previous button
@@ -385,6 +444,171 @@ class Game:
         if back_rect.collidepoint(pos):
             self.show_help = False
             self.show_menu = True
+
+    def start_puzzle(self):
+        '''Start the puzzle - load FEN and enter interactive mode'''
+        from game.fen_parser import parse_fen
+
+        puzzle = self.puzzles.get_puzzle()
+        if not puzzle:
+            return
+
+        # Create a new board for the puzzle
+        self.puzzle_board = Board()
+
+        # Load the FEN position
+        try:
+            parse_fen(self.puzzle_board, puzzle['fen'])
+            self.puzzle_mode = True
+            self.puzzle_feedback = "Your turn! Make the best move."
+            self.puzzle_solved = False
+            self.puzzle_selected_square = (-1, -1)
+            self.puzzle_legal_moves = []
+            self.puzzles.reset_puzzle()
+        except Exception as e:
+            self.puzzle_feedback = f"Error loading puzzle: {str(e)}"
+            self.puzzle_mode = False
+
+    def reset_puzzle(self):
+        '''Reset the current puzzle to initial position'''
+        from game.fen_parser import parse_fen
+
+        puzzle = self.puzzles.get_puzzle()
+        if not puzzle:
+            return
+
+        # Reset the board
+        self.puzzle_board = Board()
+
+        try:
+            parse_fen(self.puzzle_board, puzzle['fen'])
+            self.puzzle_feedback = "Puzzle reset. Try again!"
+            self.puzzle_solved = False
+            self.puzzle_selected_square = (-1, -1)
+            self.puzzle_legal_moves = []
+            self.puzzles.reset_puzzle()
+        except Exception as e:
+            self.puzzle_feedback = f"Error resetting puzzle: {str(e)}"
+
+    def handle_puzzle_board_click(self, pos):
+        '''Handle clicks on the puzzle board'''
+        if not self.puzzle_board or self.puzzle_solved:
+            return
+
+        # If no piece selected
+        if self.puzzle_selected_square == (-1, -1):
+            piece = self.puzzle_board.state[pos[0]][pos[1]]
+            if piece and piece.color == self.puzzle_board.to_move:
+                self.puzzle_selected_square = pos
+                self.puzzle_legal_moves = self.puzzle_board.get_legal_moves(pos)
+        else:
+            # Check if clicked on a legal move
+            move_found = None
+            for move in self.puzzle_legal_moves:
+                if move["to"] == pos:
+                    move_found = move
+                    break
+
+            if move_found:
+                # Make the move
+                from_pos = self.puzzle_selected_square
+                to_pos = move_found["to"]
+                piece = self.puzzle_board.state[from_pos[0]][from_pos[1]]
+
+                # Check if it's a capture BEFORE making the move
+                is_capture = self.puzzle_board.state[to_pos[0]][to_pos[1]] is not None
+
+                # Execute the move
+                self.puzzle_board.move(from_pos, move_found)
+
+                # Convert to SAN notation
+                move_san = self._move_to_san(piece, from_pos, to_pos, move_found, is_capture)
+
+                # Check if the move is correct
+                is_correct, is_complete, message = self.puzzles.check_move(move_san)
+
+                if is_correct:
+                    if is_complete:
+                        self.puzzle_feedback = "Puzzle Solved! Well done!"
+                        self.puzzle_solved = True
+                    else:
+                        self.puzzle_feedback = f"Correct! {message}"
+                        # Auto-play opponent's response if there is one
+                        self._make_opponent_move()
+                else:
+                    self.puzzle_feedback = f"Incorrect! {message}"
+
+                self.puzzle_selected_square = (-1, -1)
+                self.puzzle_legal_moves = []
+            elif pos == self.puzzle_selected_square:
+                # Deselect
+                self.puzzle_selected_square = (-1, -1)
+                self.puzzle_legal_moves = []
+            else:
+                # Select different piece
+                piece = self.puzzle_board.state[pos[0]][pos[1]]
+                if piece and piece.color == self.puzzle_board.to_move:
+                    self.puzzle_selected_square = pos
+                    self.puzzle_legal_moves = self.puzzle_board.get_legal_moves(pos)
+                else:
+                    self.puzzle_selected_square = (-1, -1)
+                    self.puzzle_legal_moves = []
+
+    def _make_opponent_move(self):
+        '''Make the opponent's move in puzzle (if solution has opponent moves)'''
+        puzzle = self.puzzles.get_puzzle()
+        if not puzzle:
+            return
+
+        solution = puzzle['solution']
+        move_index = len(self.puzzles.user_moves)
+
+        # If there's an opponent move in the solution (odd-indexed moves)
+        if move_index < len(solution):
+            # For now, just mark that we're waiting for next player move
+            # In a full implementation, we'd parse and execute the opponent's move
+            pass
+
+    def _move_to_san(self, piece, from_pos, to_pos, move, is_capture):
+        '''Convert a move to Standard Algebraic Notation (SAN)'''
+        files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+
+        # Handle castling
+        if move.get("special") == "KSC":
+            return "O-O"
+        elif move.get("special") == "QSC":
+            return "O-O-O"
+
+        # Build SAN notation
+        san = ""
+
+        # Piece symbol (K, Q, R, B, N) - pawns have no symbol
+        if piece.type != "pawn":
+            san += piece.type[0].upper()
+
+        # Starting square (for disambiguation or pawn captures)
+        from_file = files[from_pos[1]]
+        from_rank = str(8 - from_pos[0])
+
+        # Capture notation
+        if is_capture:
+            if piece.type == "pawn":
+                san += from_file  # Pawn captures include starting file
+            san += "x"
+
+        # Destination square
+        to_file = files[to_pos[1]]
+        to_rank = str(8 - to_pos[0])
+        san += to_file + to_rank
+
+        # Check for promotion
+        if move.get("special") == "promotion":
+            san += "=Q"  # Assume queen promotion for simplicity
+
+        # Check/checkmate notation (would need to check if move gives check)
+        # For simplicity, we'll skip this for now
+
+        return san
 
     def start_game(self, mode, difficulty):
         '''Start a new game with specified mode and difficulty'''
@@ -799,6 +1023,13 @@ class Game:
                     self.show_help = False
                     self.square_selected = (-1,-1)
                     self.legal_moves = []
+                    # Reset puzzle mode
+                    self.puzzle_mode = False
+                    self.puzzle_board = None
+                    self.puzzle_feedback = ""
+                    self.puzzle_solved = False
+                    self.puzzle_selected_square = (-1, -1)
+                    self.puzzle_legal_moves = []
 
         # Check if AI should make a move
         if (not self.show_menu and
@@ -1173,35 +1404,41 @@ class Game:
 
     def draw_puzzles(self):
         '''Draw puzzle screen'''
-        self.screen.fill(DASHBOARD_BG)
+        self.screen.fill(BLACK_BG)
 
         puzzle = self.puzzles.get_puzzle()
         if not puzzle:
             return
 
+        # If in puzzle mode, draw interactive board
+        if self.puzzle_mode and self.puzzle_board:
+            self.draw_puzzle_board()
+            return
+
+        # Not in puzzle mode - show puzzle information
         # Header
         header_font = pygame.font.Font(None, 40)
         title = f"Puzzle {puzzle['id']}: {puzzle['name']}"
-        title_surface = header_font.render(title, True, TEXT_PRIMARY)
+        title_surface = header_font.render(title, True, PINK_PRIMARY)
         self.screen.blit(title_surface, (20, 20))
 
         # Theme and difficulty
         info = f"{puzzle['theme']} | {puzzle['difficulty'].title()}"
-        info_surface = self.tiny_font.render(info, True, TEXT_SECONDARY)
+        info_surface = self.tiny_font.render(info, True, PINK_BABY)
         self.screen.blit(info_surface, (20, 60))
 
         # Description
-        desc_surface = self.small_font.render(puzzle['description'], True, (255, 200, 100))
+        desc_surface = self.small_font.render(puzzle['description'], True, PINK_BRIGHT)
         self.screen.blit(desc_surface, (20, 90))
 
         # FEN position
-        fen_label = self.tiny_font.render("Position (FEN):", True, (150, 150, 150))
+        fen_label = self.tiny_font.render("Position (FEN):", True, TEXT_DISABLED)
         self.screen.blit(fen_label, (20, 130))
-        fen_surface = self.tiny_font.render(puzzle['fen'], True, TEXT_PRIMARY)
+        fen_surface = self.tiny_font.render(puzzle['fen'], True, TEXT_SECONDARY)
         self.screen.blit(fen_surface, (20, 155))
 
         # Solution moves
-        sol_label = self.small_font.render("Solution:", True, (100, 255, 100))
+        sol_label = self.small_font.render("Solution:", True, PINK_PRIMARY)
         self.screen.blit(sol_label, (20, 190))
 
         y_pos = 220
@@ -1214,20 +1451,25 @@ class Game:
         # Instructions
         inst_y = 320
         instructions = [
-            "Set up this position on a real board or online chess site.",
-            "Try to find the best move sequence.",
-            "Check the solution when ready.",
-            "Study the tactical pattern to improve your chess vision."
+            "Click 'Try Puzzle' to solve interactively on the board.",
+            "Or study the solution and try it on an external board.",
+            "Use navigation buttons to browse other puzzles."
         ]
 
-        inst_label = self.small_font.render("How to solve:", True, (255, 255, 100))
+        inst_label = self.small_font.render("How to solve:", True, PINK_BABY)
         self.screen.blit(inst_label, (20, inst_y))
         inst_y += 30
 
         for line in instructions:
-            text_surface = self.tiny_font.render(line, True, (200, 200, 200))
+            text_surface = self.tiny_font.render(line, True, TEXT_SECONDARY)
             self.screen.blit(text_surface, (30, inst_y))
             inst_y += 22
+
+        # "Try Puzzle" button (big and prominent)
+        mouse_pos = pygame.mouse.get_pos()
+        try_rect = pygame.Rect(40, HEIGHT - 100, 200, 45)
+        try_hover = try_rect.collidepoint(mouse_pos)
+        draw_button(self.screen, try_rect, "Try Puzzle", self.small_font, try_hover)
 
         # Navigation buttons
         btn_width = 120
@@ -1236,18 +1478,14 @@ class Game:
 
         # Back to menu
         back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect)
-        pygame.draw.rect(self.screen, WHITE, back_rect, 2)
-        back_text = self.tiny_font.render("Back to Menu", True, TEXT_PRIMARY)
-        self.screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.centery - back_text.get_height()//2))
+        back_hover = back_rect.collidepoint(mouse_pos)
+        draw_button(self.screen, back_rect, "Back to Menu", self.tiny_font, back_hover)
 
         # Previous
         if self.puzzles.current_puzzle_index > 0:
             prev_rect = pygame.Rect(WIDTH//2 - 130, btn_y, btn_width, btn_height)
-            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect)
-            pygame.draw.rect(self.screen, WHITE, prev_rect, 2)
-            prev_text = self.tiny_font.render("< Previous", True, TEXT_PRIMARY)
-            self.screen.blit(prev_text, (prev_rect.centerx - prev_text.get_width()//2, prev_rect.centery - prev_text.get_height()//2))
+            prev_hover = prev_rect.collidepoint(mouse_pos)
+            draw_button(self.screen, prev_rect, "< Previous", self.tiny_font, prev_hover)
 
         # Progress
         progress = self.puzzles.get_progress()
@@ -1258,10 +1496,151 @@ class Game:
         # Next
         if self.puzzles.current_puzzle_index < len(self.puzzles.puzzles) - 1:
             next_rect = pygame.Rect(WIDTH//2 + 10, btn_y, btn_width, btn_height)
-            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect)
-            pygame.draw.rect(self.screen, WHITE, next_rect, 2)
-            next_text = self.tiny_font.render("Next >", True, TEXT_PRIMARY)
-            self.screen.blit(next_text, (next_rect.centerx - next_text.get_width()//2, next_rect.centery - next_text.get_height()//2))
+            next_hover = next_rect.collidepoint(mouse_pos)
+            draw_button(self.screen, next_rect, "Next >", self.tiny_font, next_hover)
+
+    def draw_puzzle_board(self):
+        '''Draw the interactive puzzle board when in puzzle mode'''
+        self.screen.fill(BLACK_BG)
+
+        puzzle = self.puzzles.get_puzzle()
+        if not puzzle or not self.puzzle_board:
+            return
+
+        board_x = 40
+        board_y = 80
+        board_size = 480
+        square_size = board_size // 8
+
+        # Header
+        title = f"Puzzle {puzzle['id']}: {puzzle['name']}"
+        title_surface = self.font_h3.render(title, True, PINK_PRIMARY)
+        self.screen.blit(title_surface, (board_x, 20))
+
+        # Draw the board
+        for i in range(8):
+            for j in range(8):
+                # Determine square color
+                if self.puzzle_selected_square == (i, j):
+                    color = LIGHT_SELECTED if (i + j) % 2 == 0 else DARK_SELECTED
+                else:
+                    color = LIGHT if (i + j) % 2 == 0 else DARK
+
+                square_rect = pygame.Rect(board_x + j * square_size,
+                                         board_y + i * square_size,
+                                         square_size, square_size)
+                pygame.draw.rect(self.screen, color, square_rect)
+
+                # Highlight legal moves
+                if (i, j) in [move["to"] for move in self.puzzle_legal_moves]:
+                    target_piece = self.puzzle_board.state[i][j]
+                    if target_piece:
+                        draw_rect_alpha(self.screen, HILIGHT_CAPTURE, square_rect)
+                    else:
+                        draw_rect_alpha(self.screen, HILIGHT, square_rect)
+
+                # Draw piece
+                piece = self.puzzle_board.state[i][j]
+                if piece:
+                    piece_img = IMAGES[piece.color][piece.type]
+                    scaled_img = pygame.transform.scale(piece_img, (square_size - 8, square_size - 8))
+                    img_rect = scaled_img.get_rect(center=square_rect.center)
+                    self.screen.blit(scaled_img, img_rect)
+
+        # Draw border around board
+        border_rect = pygame.Rect(board_x, board_y, board_size, board_size)
+        pygame.draw.rect(self.screen, WHITE, border_rect, 3)
+
+        # Right side panel with controls and feedback
+        panel_x = board_x + board_size + 40
+        panel_y = 80
+
+        # Turn indicator
+        turn_text = f"Turn: {self.puzzle_board.to_move.capitalize()}"
+        turn_color = PINK_BRIGHT if self.puzzle_board.to_move == "white" else PINK_BABY
+        turn_surface = self.small_font.render(turn_text, True, turn_color)
+        self.screen.blit(turn_surface, (panel_x, panel_y))
+        panel_y += 40
+
+        # Puzzle info
+        theme_text = f"Theme: {puzzle['theme']}"
+        theme_surface = self.tiny_font.render(theme_text, True, TEXT_SECONDARY)
+        self.screen.blit(theme_surface, (panel_x, panel_y))
+        panel_y += 25
+
+        diff_text = f"Difficulty: {puzzle['difficulty'].title()}"
+        diff_surface = self.tiny_font.render(diff_text, True, TEXT_SECONDARY)
+        self.screen.blit(diff_surface, (panel_x, panel_y))
+        panel_y += 40
+
+        # Feedback message (colored based on content)
+        if self.puzzle_feedback:
+            if "Solved" in self.puzzle_feedback or "Correct" in self.puzzle_feedback:
+                feedback_color = (100, 255, 100)  # Green
+            elif "Incorrect" in self.puzzle_feedback:
+                feedback_color = (255, 100, 100)  # Red
+            else:
+                feedback_color = PINK_BABY
+
+            # Wrap feedback text if too long
+            max_width = 350
+            words = self.puzzle_feedback.split()
+            lines = []
+            current_line = ""
+            for word in words:
+                test_line = current_line + " " + word if current_line else word
+                test_surface = self.tiny_font.render(test_line, True, feedback_color)
+                if test_surface.get_width() <= max_width:
+                    current_line = test_line
+                else:
+                    if current_line:
+                        lines.append(current_line)
+                    current_line = word
+            if current_line:
+                lines.append(current_line)
+
+            for line in lines:
+                feedback_surface = self.tiny_font.render(line, True, feedback_color)
+                self.screen.blit(feedback_surface, (panel_x, panel_y))
+                panel_y += 22
+
+        panel_y += 30
+
+        # Control buttons on the right
+        mouse_pos = pygame.mouse.get_pos()
+
+        # "Back to View" button
+        back_to_view_rect = pygame.Rect(WIDTH - 160, 20, 140, 40)
+        back_to_view_hover = back_to_view_rect.collidepoint(mouse_pos)
+        draw_button(self.screen, back_to_view_rect, "Back to View", self.tiny_font, back_to_view_hover)
+
+        # "Hint" button
+        hint_rect = pygame.Rect(WIDTH - 160, 70, 140, 40)
+        hint_hover = hint_rect.collidepoint(mouse_pos)
+        hint_disabled = self.puzzle_solved
+        draw_button(self.screen, hint_rect, "Hint", self.tiny_font, hint_hover, hint_disabled)
+
+        # "Reset" button
+        reset_rect = pygame.Rect(WIDTH - 160, 120, 140, 40)
+        reset_hover = reset_rect.collidepoint(mouse_pos)
+        draw_button(self.screen, reset_rect, "Reset", self.tiny_font, reset_hover)
+
+        # Show move count
+        moves_made = len(self.puzzles.user_moves)
+        total_moves = len(puzzle['solution'])
+        progress_text = f"Moves: {moves_made}/{total_moves}"
+        progress_surface = self.tiny_font.render(progress_text, True, TEXT_SECONDARY)
+        self.screen.blit(progress_surface, (WIDTH - 160, 180))
+
+        # Navigation buttons at bottom
+        btn_width = 120
+        btn_height = 35
+        btn_y = HEIGHT - 50
+
+        # Back to menu
+        back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
+        back_hover = back_rect.collidepoint(mouse_pos)
+        draw_button(self.screen, back_rect, "Back to Menu", self.tiny_font, back_hover)
 
     def draw_help(self):
         '''Draw help screen'''
