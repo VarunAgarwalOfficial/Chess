@@ -119,17 +119,27 @@ class TranspositionTable:
     def store(self, key, depth, score, flag, move=None):
         '''
         Store position evaluation
-        Uses replacement strategy: replace if deeper or same generation
+        Enhanced replacement strategy for better hit rates:
+        - Always replace if new entry is deeper (depth-preferred)
+        - Replace old generation entries
+        - Use aging to prioritize recent searches
         '''
         # Check if we should replace existing entry
         if key in self.table:
             existing = self.table[key]
 
-            # Always replace if new search is deeper
-            if depth < existing['depth']:
-                # Keep existing if it's from same generation and deeper
-                if existing['generation'] == self.generation:
-                    return
+            # Calculate replacement priority
+            # Higher priority means more important to keep
+            existing_priority = existing['depth'] * 4 + (1 if existing['generation'] == self.generation else 0)
+            new_priority = depth * 4 + 2  # New entries get slight bonus
+
+            # Keep existing if it has higher priority
+            if existing_priority >= new_priority:
+                # But always update if new search is significantly deeper
+                if depth > existing['depth'] + 2:
+                    pass  # Will replace
+                else:
+                    return  # Keep existing
 
             self.collisions += 1
 
@@ -142,9 +152,8 @@ class TranspositionTable:
             'generation': self.generation
         }
 
-        # Limit table size
+        # Limit table size (optimized cleanup)
         if len(self.table) > self.max_entries:
-            # Remove oldest generation entries
             self._cleanup()
 
     def _cleanup(self):
