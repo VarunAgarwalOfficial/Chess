@@ -466,7 +466,7 @@ class Game:
 
         # Current turn with pink indicator
         turn_text = f"Turn: {self.board.to_move.capitalize()}"
-        turn_color = PINK_ACCENT if self.board.to_move == "white" else PINK_LIGHT
+        turn_color = PINK_BRIGHT if self.board.to_move == "white" else PINK_BABY
         turn_surface = self.small_font.render(turn_text, True, turn_color)
         self.screen.blit(turn_surface, (dashboard_x + margin + 16, card_y))
         card_y += 32
@@ -755,11 +755,11 @@ class Game:
         if self.board.game_result == "checkmate_white":
             title = "Checkmate!"
             subtitle = "White Wins"
-            color = PINK_ACCENT
+            color = PINK_BRIGHT
         elif self.board.game_result == "checkmate_black":
             title = "Checkmate!"
             subtitle = "Black Wins"
-            color = PINK_LIGHT
+            color = PINK_BABY
         elif self.board.game_result == "stalemate":
             title = "Draw!"
             subtitle = "Stalemate"
@@ -898,7 +898,7 @@ class Game:
 
         # Category and difficulty
         info = f"{lesson['category'].replace('_', ' ').title()} | {lesson['difficulty'].title()}"
-        info_surface = self.tiny_font.render(info, True, (180, 180, 180))
+        info_surface = self.tiny_font.render(info, True, TEXT_SECONDARY)
         self.screen.blit(info_surface, (20, 60))
 
         # Content
@@ -912,14 +912,14 @@ class Game:
 
         # Key points
         y_pos += 10
-        points_title = self.small_font.render("Key Points:", True, (100, 200, 255))
+        points_title = self.small_font.render("Key Points:", True, PINK_PRIMARY)
         self.screen.blit(points_title, (20, y_pos))
         y_pos += 30
 
         for point in lesson['key_points']:
             if y_pos > HEIGHT - 100:
                 break
-            text_surface = self.tiny_font.render(f"- {point}", True, (150, 220, 150))
+            text_surface = self.tiny_font.render(f"- {point}", True, PINK_BABY)
             self.screen.blit(text_surface, (30, y_pos))
             y_pos += 22
 
@@ -945,8 +945,8 @@ class Game:
 
         # Progress
         progress = self.tutorial.get_progress()
-        progress_text = f"Lesson {progress['current']} / {progress['total']}"
-        progress_surface = self.tiny_font.render(progress_text, True, (180, 180, 180))
+        progress_text = f"Lesson {progress['current_lesson']} / {progress['total']}"
+        progress_surface = self.tiny_font.render(progress_text, True, TEXT_SECONDARY)
         self.screen.blit(progress_surface, (WIDTH//2 - progress_surface.get_width()//2, btn_y + 10))
 
         # Next
@@ -973,7 +973,7 @@ class Game:
 
         # Theme and difficulty
         info = f"{puzzle['theme']} | {puzzle['difficulty'].title()}"
-        info_surface = self.tiny_font.render(info, True, (180, 180, 180))
+        info_surface = self.tiny_font.render(info, True, TEXT_SECONDARY)
         self.screen.blit(info_surface, (20, 60))
 
         # Description
@@ -1038,7 +1038,7 @@ class Game:
         # Progress
         progress = self.puzzles.get_progress()
         progress_text = f"Puzzle {progress['current']} / {progress['total']}"
-        progress_surface = self.tiny_font.render(progress_text, True, (180, 180, 180))
+        progress_surface = self.tiny_font.render(progress_text, True, TEXT_SECONDARY)
         self.screen.blit(progress_surface, (WIDTH//2 - progress_surface.get_width()//2, btn_y + 10))
 
         # Next
@@ -1098,7 +1098,7 @@ class Game:
                 break
 
             # Section title
-            section_surface = self.small_font.render(section_title, True, (100, 200, 255))
+            section_surface = self.small_font.render(section_title, True, PINK_PRIMARY)
             self.screen.blit(section_surface, (20, y_pos))
             y_pos += 28
 
