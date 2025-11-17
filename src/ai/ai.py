@@ -3,11 +3,14 @@ Chess AI Engine with Advanced Optimizations:
 - Minimax algorithm with Alpha-Beta pruning
 - Enhanced transposition table with replacement strategy
 - Zobrist hashing for fast position comparison
-- Advanced move ordering (PV, hash moves, MVV-LVA, killer moves, history heuristic)
+- Advanced move ordering (PV, hash moves, SEE, killer moves, history heuristic)
+- Static Exchange Evaluation (SEE) for capture evaluation
 - Late Move Reduction (LMR)
 - Null Move Pruning
+- Razoring at depth 1-2
+- Futility Pruning
 - Aspiration windows
-- Quiescence search for tactical positions
+- Quiescence search for tactical positions with SEE pruning
 - Iterative deepening
 - Search extensions (check, passed pawn, recapture)
 - Endgame knowledge
@@ -17,7 +20,7 @@ Chess AI Engine with Advanced Optimizations:
 import time
 from copy import deepcopy
 from .cache_system import TranspositionTable, CacheManager
-from .optimizations import MoveOrderingOptimizer, LateMovePruning, NullMovePruning, AspirationWindow
+from .optimizations import MoveOrderingOptimizer, LateMovePruning, NullMovePruning, AspirationWindow, StaticExchangeEvaluation, Razoring
 from .advanced_search import EndgameKnowledge, SearchExtensions, SearchOptimizer
 
 
@@ -150,10 +153,53 @@ class AI:
             "king": self.king_middlegame_table
         }
 
+        # Pre-compute combined piece value + PST tables for faster lookup
+        # This eliminates the need for separate value + PST lookups
+        self._precompute_combined_tables()
+
+        # Evaluation cache - maps position hash to evaluation score
+        # Cleared on each new search for fresh evaluations
+        self.eval_cache = {}
+
         # Statistics
         self.nodes_searched = 0
         self.cutoffs = 0
         self.transposition_hits = 0
+        self.eval_cache_hits = 0
+
+    def _precompute_combined_tables(self):
+        '''
+        Pre-compute combined piece value + PST tables for both colors
+        This optimization eliminates repeated value lookups and table flipping
+        Format: combined_tables[piece_type][color][row][col]
+        '''
+        self.combined_tables = {}
+
+        for piece_type in ["pawn", "knight", "bishop", "rook", "queen", "king"]:
+            base_value = self.piece_values[piece_type]
+            pst = self.piece_square_tables[piece_type]
+
+            # Pre-compute for white (normal orientation)
+            white_table = []
+            for row in range(8):
+                white_row = []
+                for col in range(8):
+                    white_row.append(base_value + pst[row][col])
+                white_table.append(white_row)
+
+            # Pre-compute for black (flipped orientation)
+            black_table = []
+            for row in range(8):
+                black_row = []
+                for col in range(8):
+                    # Pre-flip the table so we can use direct indexing
+                    black_row.append(base_value + pst[7 - row][col])
+                black_table.append(black_row)
+
+            self.combined_tables[piece_type] = {
+                "white": white_table,
+                "black": black_table
+            }
 
     def get_piece_value(self, piece, row, col):
         '''Get the value of a piece including its positional bonus'''
@@ -175,9 +221,17 @@ class AI:
 
     def evaluate_board(self):
         '''
-        Evaluate the current board position
+        Optimized board evaluation with caching and lazy evaluation
         Positive scores favor white, negative favor black
+
+        Optimizations:
+        - Evaluation caching by position hash
+        - Pre-computed combined value+PST tables
+        - Lazy evaluation (material first, skip expensive features if cutoff likely)
+        - Fast pawn structure evaluation
+        - Minimized function calls in inner loop
         '''
+        # Terminal positions (game over)
         if self.board.game_over:
             if self.board.game_result == "checkmate_white":
                 return 100000
@@ -186,34 +240,130 @@ class AI:
             else:
                 return 0  # Draw
 
+        # Check evaluation cache first (huge speedup for repeated positions)
+        position_hash = self.board.position_hash
+        if position_hash in self.eval_cache:
+            self.eval_cache_hits += 1
+            return self.eval_cache[position_hash]
+
         # Check for known endgame positions
         if self.endgame_knowledge.is_simple_endgame(self.board):
             endgame_score = self.endgame_knowledge.evaluate_known_endgame(self.board)
             if endgame_score is not None:
+                self.eval_cache[position_hash] = endgame_score
                 return endgame_score
 
-        score = 0
+        # Fast material + positional evaluation using pre-computed tables
+        # Access board.state directly to minimize function call overhead
+        board_state = self.board.state
+        combined_tables = self.combined_tables
 
-        # Material and positional evaluation
+        score = 0
+        material_balance = 0  # For lazy eval check
+
+        # Track pawns for structure evaluation (lists of column positions)
+        white_pawns = []
+        black_pawns = []
+
+        # Single-pass evaluation: material + PST + track pawns
         for row in range(8):
             for col in range(8):
-                piece = self.board.state[row][col]
+                piece = board_state[row][col]
                 if piece:
-                    piece_score = self.get_piece_value(piece, row, col)
-                    if piece.color == "white":
-                        score += piece_score
-                    else:
-                        score -= piece_score
+                    # Direct lookup from pre-computed combined table
+                    # No function calls, no arithmetic (7-row), no table lookup overhead
+                    piece_value = combined_tables[piece.type][piece.color][row][col]
 
-        # Mobility bonus (number of legal moves)
-        # Commented out for performance - can be enabled for stronger play
-        # white_mobility = sum(len(self.board.get_legal_moves((r, c)))
-        #                     for r in range(8) for c in range(8)
-        #                     if self.board.state[r][c] and self.board.state[r][c].color == "white")
-        # black_mobility = sum(len(self.board.get_legal_moves((r, c)))
-        #                     for r in range(8) for c in range(8)
-        #                     if self.board.state[r][c] and self.board.state[r][c].color == "black")
-        # score += (white_mobility - black_mobility) * 10
+                    if piece.color == "white":
+                        score += piece_value
+                        material_balance += self.piece_values[piece.type]
+                        if piece.type == "pawn":
+                            white_pawns.append((row, col))
+                    else:
+                        score -= piece_value
+                        material_balance -= self.piece_values[piece.type]
+                        if piece.type == "pawn":
+                            black_pawns.append((row, col))
+
+        # Lazy evaluation: Only compute expensive pawn structure if game is close
+        # Skip if one side has overwhelming material advantage (>500 centipawns = ~5 pawns)
+        if abs(material_balance) < 500:
+            pawn_structure_score = self._evaluate_pawn_structure(white_pawns, black_pawns)
+            score += pawn_structure_score
+
+        # Cache the evaluation for this position
+        self.eval_cache[position_hash] = score
+
+        return score
+
+    def _evaluate_pawn_structure(self, white_pawns, black_pawns):
+        '''
+        Fast pawn structure evaluation
+        Detects: doubled pawns, isolated pawns, passed pawns
+
+        Penalties/Bonuses (centipawns):
+        - Doubled pawn: -20
+        - Isolated pawn: -15
+        - Passed pawn: +30 to +60 (depends on advancement)
+        '''
+        score = 0
+
+        # Evaluate white pawns
+        white_cols = [col for _, col in white_pawns]
+        black_cols = [col for _, col in black_pawns]
+
+        for row, col in white_pawns:
+            # Doubled pawns: multiple pawns on same column
+            if white_cols.count(col) > 1:
+                score -= 20
+
+            # Isolated pawns: no friendly pawns on adjacent columns
+            has_neighbor = any(
+                c == col - 1 or c == col + 1
+                for _, c in white_pawns
+            )
+            if not has_neighbor:
+                score -= 15
+
+            # Passed pawns: no enemy pawns blocking or on adjacent columns ahead
+            is_passed = True
+            for black_row, black_col in black_pawns:
+                # Check if black pawn is ahead and in path or adjacent columns
+                if black_row < row and abs(black_col - col) <= 1:
+                    is_passed = False
+                    break
+
+            if is_passed:
+                # Bonus increases as pawn advances (row decreases for white)
+                advancement = 7 - row
+                score += 30 + (advancement * 5)  # 30-65 centipawns
+
+        # Evaluate black pawns
+        for row, col in black_pawns:
+            # Doubled pawns
+            if black_cols.count(col) > 1:
+                score += 20  # Penalty for black = bonus for white
+
+            # Isolated pawns
+            has_neighbor = any(
+                c == col - 1 or c == col + 1
+                for _, c in black_pawns
+            )
+            if not has_neighbor:
+                score += 15
+
+            # Passed pawns
+            is_passed = True
+            for white_row, white_col in white_pawns:
+                # Check if white pawn is ahead (row > for black) and in path
+                if white_row > row and abs(white_col - col) <= 1:
+                    is_passed = False
+                    break
+
+            if is_passed:
+                # Bonus increases as pawn advances (row increases for black)
+                advancement = row
+                score -= 30 + (advancement * 5)  # Penalty for black
 
         return score
 
@@ -241,6 +391,7 @@ class AI:
         Quiescence search to avoid horizon effect
         Only searches captures and checks
         Optimized with reduced depth limit for faster search
+        Uses SEE to prune bad captures
         '''
         self.nodes_searched += 1
 
@@ -260,8 +411,13 @@ class AI:
         capture_moves = [(move, pos) for move, pos in all_moves
                         if self.board.state[move["to"][0]][move["to"][1]] is not None]
 
-        # Order captures by MVV-LVA (depth 0 for quiescence)
+        # Order captures by SEE (depth 0 for quiescence)
         for move, pos in self.order_moves(capture_moves, 0):
+            # Prune captures with very negative SEE (losing more than a pawn)
+            see_score = StaticExchangeEvaluation.evaluate(self.board, move, pos)
+            if see_score < -100:  # Losing more than a pawn
+                continue
+
             # Make move
             initial_state = self._save_state()
             self.board.move(pos, move)
@@ -284,6 +440,7 @@ class AI:
         - Principal Variation Search (PVS) for ~10% speed improvement
         - Enhanced transposition table
         - Null move pruning
+        - Razoring at depth 1-2
         - Late move reduction (LMR)
         - Futility pruning
         - Search extensions
@@ -339,6 +496,14 @@ class AI:
             else:
                 # Stalemate
                 return 0
+
+        # Razoring: At low depths, if position is very bad, reduce depth
+        # Only apply at depth 1-2, not in check, and not in PV nodes
+        if depth in [1, 2]:
+            static_eval = self.evaluate_board()
+            if Razoring.should_apply(depth, alpha, static_eval, in_check, pv_node):
+                # Position is bad, reduce depth and search to quiescence
+                return self.quiescence_search(alpha, beta)
 
         # Futility Pruning: Skip moves at low depths if position is hopeless
         # Only apply at depth 1-3, not in check, and not in PV nodes
@@ -516,6 +681,10 @@ class AI:
         self.nodes_searched = 0
         self.cutoffs = 0
         self.transposition_hits = 0
+        self.eval_cache_hits = 0
+
+        # Clear evaluation cache for new search (fresh evaluations)
+        self.eval_cache.clear()
 
         # Increment generation for new search
         self.transposition_table.new_search()
