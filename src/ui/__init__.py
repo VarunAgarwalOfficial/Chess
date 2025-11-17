@@ -15,38 +15,44 @@ Declaring Constants
 '''
 
 
-# MATERIAL UI COLORS - Pink & Black Theme
-# Pink palette (Material UI Pink)
-PINK_PRIMARY = (233, 30, 99)      # #E91E63 - Main pink
-PINK_LIGHT = (248, 187, 208)      # #F8BBD0 - Light pink
-PINK_DARK = (194, 24, 91)         # #C2185B - Dark pink
-PINK_ACCENT = (255, 64, 129)      # #FF4081 - Accent pink
+# SHARP DESIGN - Black, Pink, White, Baby Pink Theme
+# Pink palette
+PINK_PRIMARY = (236, 64, 122)     # #EC407A - Main pink
+PINK_BABY = (248, 187, 208)       # #F8BBD0 - Baby pink
+PINK_DARK = (173, 20, 87)         # #AD1457 - Dark pink
+PINK_BRIGHT = (255, 64, 129)      # #FF4081 - Bright accent
 
-# Background & Surface colors
-BLACK_BG = (18, 18, 18)           # #121212 - Main background
-SURFACE = (30, 30, 30)            # #1E1E1E - Card surface
-SURFACE_ELEVATED = (40, 40, 40)   # #282828 - Elevated surface
+# Base colors
+BLACK = (0, 0, 0)                 # Pure black
+WHITE = (255, 255, 255)           # Pure white
+GRAY_DARK = (33, 33, 33)          # Dark gray for surfaces
+GRAY_MED = (66, 66, 66)           # Medium gray
+GRAY_LIGHT = (158, 158, 158)      # Light gray
 
-# Board colors - subtle contrast with pink accents
-LIGHT = (60, 60, 60)              # Dark gray for light squares
-DARK = (40, 40, 40)               # Darker gray for dark squares
-LIGHT_SELECTED = PINK_PRIMARY     # Pink for selected
-DARK_SELECTED = PINK_DARK         # Dark pink for selected
+# Board colors - high contrast
+LIGHT = (245, 245, 245)           # Light squares - almost white
+DARK = (90, 90, 90)               # Dark squares - medium gray
+LIGHT_SELECTED = PINK_PRIMARY     # Pink for selected light
+DARK_SELECTED = PINK_DARK         # Dark pink for selected dark
 
 # Highlight colors
-HILIGHT = (233, 30, 99, 100)      # Pink highlight
-HILIGHT_CAPTURE = (255, 64, 129, 120)  # Accent pink for captures
+HILIGHT = (236, 64, 122, 120)     # Pink highlight
+HILIGHT_CAPTURE = (255, 64, 129, 150)  # Bright pink for captures
 
 # UI colors
-DASHBOARD_BG = BLACK_BG
-EVAL_BAR_WHITE = (220, 220, 220)
-EVAL_BAR_BLACK = (40, 40, 40)
-TEXT_PRIMARY = (255, 255, 255)    # White text
-TEXT_SECONDARY = (200, 200, 200)  # Gray text
-TEXT_DISABLED = (120, 120, 120)   # Disabled text
+BLACK_BG = BLACK
+DASHBOARD_BG = GRAY_DARK
+SURFACE = GRAY_DARK
+SURFACE_ELEVATED = GRAY_MED
+EVAL_BAR_WHITE = WHITE
+EVAL_BAR_BLACK = GRAY_DARK
+TEXT_PRIMARY = WHITE
+TEXT_SECONDARY = GRAY_LIGHT
+TEXT_DISABLED = (117, 117, 117)
 BUTTON_COLOR = PINK_PRIMARY
-BUTTON_HOVER = PINK_ACCENT
-BUTTON_DISABLED = (80, 80, 80)
+BUTTON_HOVER = PINK_BRIGHT
+BUTTON_DISABLED = GRAY_MED
+BUTTON_TEXT = WHITE
 
 
 COLORS = [LIGHT , DARK , LIGHT_SELECTED , DARK_SELECTED]
@@ -75,57 +81,69 @@ for piece in pieces:
 
 
 '''
-Material UI Helper Functions
+Sharp Design Helper Functions
 '''
 
 def draw_card(surface, rect, elevated=False):
-    '''Draw a Material UI card with rounded corners'''
+    '''Draw a sharp-edged card'''
     # Card surface
     color = SURFACE_ELEVATED if elevated else SURFACE
-    pygame.draw.rect(surface, color, rect, border_radius=16)
+    pygame.draw.rect(surface, color, rect)
 
-    # Subtle border
-    pygame.draw.rect(surface, (60, 60, 60), rect, 1, border_radius=16)
+    # Border
+    border_color = GRAY_MED if elevated else (50, 50, 50)
+    pygame.draw.rect(surface, border_color, rect, 2)
 
 def draw_button(surface, rect, text, font, hover=False, disabled=False):
-    '''Draw a Material UI button'''
+    '''Draw a sharp-edged button'''
     # Button color based on state
     if disabled:
         color = BUTTON_DISABLED
         text_color = TEXT_DISABLED
     elif hover:
         color = BUTTON_HOVER
-        text_color = TEXT_PRIMARY
+        text_color = WHITE
     else:
         color = BUTTON_COLOR
-        text_color = TEXT_PRIMARY
+        text_color = WHITE
 
     # Button surface
-    pygame.draw.rect(surface, color, rect, border_radius=24)
+    pygame.draw.rect(surface, color, rect)
+
+    # Sharp border
+    border_color = PINK_BRIGHT if hover else WHITE
+    pygame.draw.rect(surface, border_color, rect, 2)
 
     # Button text
     text_surface = font.render(text, True, text_color)
     text_rect = text_surface.get_rect(center=rect.center)
     surface.blit(text_surface, text_rect)
 
+def draw_back_button(surface, x, y, font, hover=False):
+    '''Draw a back button'''
+    button_rect = pygame.Rect(x, y, 140, 45)
+    draw_button(surface, button_rect, "← BACK", font, hover)
+    return button_rect
+
 def draw_chip(surface, x, y, text, font, color=PINK_PRIMARY):
-    '''Draw a Material UI chip (small rounded tag)'''
-    text_surface = font.render(text, True, TEXT_PRIMARY)
-    padding = 12
+    '''Draw a sharp chip/tag'''
+    text_surface = font.render(text, True, WHITE)
+    padding = 10
     chip_width = text_surface.get_width() + padding * 2
     chip_height = text_surface.get_height() + padding
 
     chip_rect = pygame.Rect(x, y, chip_width, chip_height)
-    pygame.draw.rect(surface, color, chip_rect, border_radius=chip_height // 2)
+    pygame.draw.rect(surface, color, chip_rect)
+    pygame.draw.rect(surface, PINK_BRIGHT, chip_rect, 1)
 
     text_rect = text_surface.get_rect(center=chip_rect.center)
     surface.blit(text_surface, text_rect)
 
-    return chip_width
+    return chip_width + 8
 
 def draw_divider(surface, x, y, width):
-    '''Draw a Material UI divider line'''
-    pygame.draw.line(surface, (60, 60, 60), (x, y), (x + width, y), 1)
+    '''Draw a divider line'''
+    pygame.draw.line(surface, GRAY_MED, (x, y), (x + width, y), 2)
 
 
 
@@ -197,75 +215,60 @@ class Game:
         self.create_menu()
 
     def create_menu(self):
-        '''Create main menu buttons with Material UI design'''
-        button_width = 340
-        button_height = 56
+        '''Create main menu buttons'''
+        button_width = 320
+        button_height = 48
         start_x = WIDTH // 2 - button_width // 2
-        start_y = 140
-        spacing = 68
+        start_y = 120
+        spacing = 58
 
         self.menu_buttons = [
             {"rect": pygame.Rect(start_x, start_y, button_width, button_height),
-             "text": "Player vs Player", "action": "pvp", "icon": "♟"},
+             "text": "Player vs Player", "action": "pvp"},
             {"rect": pygame.Rect(start_x, start_y + spacing, button_width, button_height),
-             "text": "Player vs AI (Easy)", "action": "pva_easy", "icon": "♖"},
+             "text": "Player vs AI (Easy)", "action": "pva_easy"},
             {"rect": pygame.Rect(start_x, start_y + spacing * 2, button_width, button_height),
-             "text": "Player vs AI (Medium)", "action": "pva_medium", "icon": "♗"},
+             "text": "Player vs AI (Medium)", "action": "pva_medium"},
             {"rect": pygame.Rect(start_x, start_y + spacing * 3, button_width, button_height),
-             "text": "Player vs AI (Hard)", "action": "pva_hard", "icon": "♘"},
+             "text": "Player vs AI (Hard)", "action": "pva_hard"},
             {"rect": pygame.Rect(start_x, start_y + spacing * 4, button_width, button_height),
-             "text": "Player vs AI (Expert)", "action": "pva_expert", "icon": "♕"},
+             "text": "Player vs AI (Expert)", "action": "pva_expert"},
             {"rect": pygame.Rect(start_x, start_y + spacing * 5, button_width, button_height),
-             "text": "Learn Chess (Tutorial)", "action": "tutorial", "icon": "📚"},
+             "text": "Learn Chess", "action": "tutorial"},
             {"rect": pygame.Rect(start_x, start_y + spacing * 6, button_width, button_height),
-             "text": "Solve Puzzles (40 Tactics)", "action": "puzzles", "icon": "🧩"},
+             "text": "Solve Puzzles", "action": "puzzles"},
             {"rect": pygame.Rect(start_x, start_y + spacing * 7, button_width, button_height),
-             "text": "Help & Instructions", "action": "help", "icon": "❓"},
+             "text": "Help", "action": "help"},
         ]
 
     def draw_menu(self):
-        '''Draw the main menu with Material UI design'''
+        '''Draw the main menu'''
         self.screen.fill(BLACK_BG)
 
-        # Hero section with gradient effect (simulated with multiple rects)
-        hero_height = 120
-        for i in range(hero_height):
-            alpha = int(255 * (1 - i / hero_height) * 0.3)
-            color = (*PINK_DARK, alpha)
-            hero_surf = pygame.Surface((WIDTH, 1), pygame.SRCALPHA)
-            hero_surf.fill(color)
-            self.screen.blit(hero_surf, (0, i))
-
         # Title
-        title_text = "Chess Master"
-        title_surface = self.font_h1.render(title_text, True, PINK_ACCENT)
-        title_rect = title_surface.get_rect(center=(WIDTH // 2, 40))
+        title_text = "CHESS MASTER"
+        title_surface = self.font_h1.render(title_text, True, PINK_PRIMARY)
+        title_rect = title_surface.get_rect(center=(WIDTH // 2, 50))
         self.screen.blit(title_surface, title_rect)
 
-        # Subtitle with better typography
-        subtitle_text = "Professional Chess Engine with AI & Learning Tools"
-        subtitle_surface = self.tiny_font.render(subtitle_text, True, TEXT_SECONDARY)
-        subtitle_rect = subtitle_surface.get_rect(center=(WIDTH // 2, 85))
+        # Subtitle
+        subtitle_text = "Advanced Chess Engine with AI"
+        subtitle_surface = self.small_font.render(subtitle_text, True, TEXT_SECONDARY)
+        subtitle_rect = subtitle_surface.get_rect(center=(WIDTH // 2, 90))
         self.screen.blit(subtitle_surface, subtitle_rect)
 
-        # Decorative divider
-        divider_y = 110
-        pygame.draw.line(self.screen, PINK_PRIMARY,
-                        (WIDTH // 2 - 100, divider_y),
-                        (WIDTH // 2 + 100, divider_y), 2)
-
-        # Buttons with Material UI design
+        # Buttons
         mouse_pos = pygame.mouse.get_pos()
         for button in self.menu_buttons:
             hover = button["rect"].collidepoint(mouse_pos)
             draw_button(self.screen, button["rect"], button["text"], self.small_font, hover)
 
-        # Feature chips at bottom
-        chip_y = HEIGHT - 40
-        chip_x = WIDTH // 2 - 240
-        chip_x += draw_chip(self.screen, chip_x, chip_y, "40 Puzzles", self.tiny_font) + 10
-        chip_x += draw_chip(self.screen, chip_x, chip_y, "20 Tutorials", self.tiny_font, PINK_DARK) + 10
-        draw_chip(self.screen, chip_x, chip_y, "Advanced AI", self.tiny_font, PINK_ACCENT)
+        # Feature info at bottom
+        info_y = HEIGHT - 30
+        info_text = "40 Puzzles  |  20 Tutorials  |  Advanced AI Opponent"
+        info_surface = self.tiny_font.render(info_text, True, PINK_BABY)
+        info_rect = info_surface.get_rect(center=(WIDTH // 2, info_y))
+        self.screen.blit(info_surface, info_rect)
 
     def handle_menu_click(self, pos):
         '''Handle clicks on menu buttons'''
@@ -490,14 +493,14 @@ class Game:
         y_offset = self.draw_move_history(dashboard_x, y_offset, margin)
 
     def draw_evaluation_bar(self, x, y, margin):
-        '''Draw the evaluation bar with Material UI design'''
+        '''Draw the evaluation bar'''
         # Evaluation Card
         card_height = 110
         card_rect = pygame.Rect(x + margin, y, DASHBOARD_WIDTH - margin * 2, card_height)
         draw_card(self.screen, card_rect)
 
-        # Calculate evaluation if AI exists
-        if self.ai and not self.board.game_over:
+        # Calculate evaluation if AI exists and not thinking (to avoid board corruption)
+        if self.ai and not self.board.game_over and not self.ai_thinking:
             self.current_eval = self.ai.evaluate_board() / 100.0  # Convert centipawns to pawns
 
         # Clamp evaluation between -10 and +10 for display
@@ -510,37 +513,46 @@ class Game:
         # Evaluation bar
         bar_y = y + 45
         bar_width = DASHBOARD_WIDTH - margin * 2 - 32
-        bar_height = 28
+        bar_height = 32
 
         # Calculate bar fill (0 = all black, 1 = all white)
         white_percentage = (display_eval + 10) / 20.0
 
-        # Bar background (rounded)
+        # Bar background
         bar_rect = pygame.Rect(x + margin + 16, bar_y, bar_width, bar_height)
-        pygame.draw.rect(self.screen, EVAL_BAR_BLACK, bar_rect, border_radius=14)
+        pygame.draw.rect(self.screen, GRAY_MED, bar_rect)
 
-        # White portion (rounded)
+        # White portion (advantage for white)
         white_width = int(bar_width * white_percentage)
         if white_width > 0:
             white_rect = pygame.Rect(x + margin + 16, bar_y, white_width, bar_height)
-            pygame.draw.rect(self.screen, PINK_LIGHT, white_rect, border_radius=14)
+            pygame.draw.rect(self.screen, PINK_BABY, white_rect)
+
+        # Black portion (advantage for black)
+        black_width = bar_width - white_width
+        if black_width > 0:
+            black_rect = pygame.Rect(x + margin + 16 + white_width, bar_y, black_width, bar_height)
+            pygame.draw.rect(self.screen, GRAY_DARK, black_rect)
 
         # Center line
         center_x = x + margin + 16 + bar_width // 2
-        pygame.draw.line(self.screen, (80, 80, 80),
+        pygame.draw.line(self.screen, WHITE,
                         (center_x, bar_y), (center_x, bar_y + bar_height), 2)
+
+        # Border
+        pygame.draw.rect(self.screen, WHITE, bar_rect, 2)
 
         # Evaluation text
         eval_text = f"{self.current_eval:+.2f}"
-        eval_color = PINK_ACCENT if self.current_eval > 0 else TEXT_SECONDARY
+        eval_color = PINK_PRIMARY if self.current_eval > 0 else WHITE
         eval_surface = self.font.render(eval_text, True, eval_color)
-        eval_rect = eval_surface.get_rect(center=(center_x, bar_y + bar_height + 20))
+        eval_rect = eval_surface.get_rect(center=(center_x, bar_y + bar_height + 18))
         self.screen.blit(eval_surface, eval_rect)
 
         return y + card_height + margin
 
     def draw_captured_pieces(self, x, y, margin):
-        '''Draw captured pieces with Material UI design'''
+        '''Draw captured pieces'''
         # Captured Pieces Card
         card_height = 90
         card_rect = pygame.Rect(x + margin, y, DASHBOARD_WIDTH - margin * 2, card_height)
@@ -553,7 +565,7 @@ class Game:
         card_y = y + 42
 
         # White's captures (black pieces)
-        white_label = self.tiny_font.render("White:", True, PINK_LIGHT)
+        white_label = self.tiny_font.render("White:", True, PINK_BABY)
         self.screen.blit(white_label, (x + margin + 16, card_y))
 
         white_captures_text = ""
@@ -561,12 +573,12 @@ class Game:
             white_captures_text += f"{piece_type[0].upper()} "
         if not white_captures_text:
             white_captures_text = "None"
-        white_surface = self.tiny_font.render(white_captures_text, True, TEXT_SECONDARY)
-        self.screen.blit(white_surface, (x + margin + 70, card_y))
+        white_surface = self.tiny_font.render(white_captures_text, True, WHITE)
+        self.screen.blit(white_surface, (x + margin + 80, card_y))
         card_y += 22
 
         # Black's captures (white pieces)
-        black_label = self.tiny_font.render("Black:", True, TEXT_DISABLED)
+        black_label = self.tiny_font.render("Black:", True, TEXT_SECONDARY)
         self.screen.blit(black_label, (x + margin + 16, card_y))
 
         black_captures_text = ""
@@ -574,8 +586,8 @@ class Game:
             black_captures_text += f"{piece_type[0].upper()} "
         if not black_captures_text:
             black_captures_text = "None"
-        black_surface = self.tiny_font.render(black_captures_text, True, TEXT_SECONDARY)
-        self.screen.blit(black_surface, (x + margin + 70, card_y))
+        black_surface = self.tiny_font.render(black_captures_text, True, WHITE)
+        self.screen.blit(black_surface, (x + margin + 80, card_y))
 
         return y + card_height + margin
 
