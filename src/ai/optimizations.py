@@ -250,6 +250,8 @@ class LateMovePruning:
 
         Late Move Reduction (LMR): moves later in the list are
         less likely to be good, so search them at reduced depth
+
+        Made more aggressive for faster search with minimal strength loss
         '''
         if in_check:
             return False  # Never reduce in check
@@ -261,21 +263,26 @@ class LateMovePruning:
         if move["special"] is not None:
             return False
 
-        # Reduce moves after the first few
-        if move_number > 4:
+        # More aggressive: reduce moves after first 3 (was 4)
+        if move_number > 3:
             return True
 
         return False
 
     @staticmethod
     def get_reduction(move_number, depth):
-        '''Calculate reduction amount based on move number and depth'''
-        if move_number < 4:
+        '''
+        Calculate reduction amount based on move number and depth
+        More aggressive reductions for faster search
+        '''
+        if move_number < 3:
             return 0
-        elif move_number < 8:
+        elif move_number < 6:
             return 1
+        elif move_number < 12:
+            return 2
         else:
-            return min(2, depth - 2)
+            return min(3, depth - 1)  # Even deeper reduction for late moves
 
 
 class NullMovePruning:

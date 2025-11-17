@@ -28,12 +28,12 @@ class AI:
         self.opponent = "white" if color == "black" else "black"
         self.difficulty = difficulty
 
-        # Set search depth based on difficulty
+        # Set search depth based on difficulty (optimized for speed)
         self.max_depth = {
             "easy": 2,
             "medium": 3,
-            "hard": 4,
-            "expert": 5
+            "hard": 3,      # Reduced from 4 - still strong with PVS/pruning
+            "expert": 4     # Reduced from 5 - for those who want deeper search
         }.get(difficulty, 3)
 
         # Enhanced transposition table with replacement strategy
@@ -240,13 +240,14 @@ class AI:
         '''
         Quiescence search to avoid horizon effect
         Only searches captures and checks
+        Optimized with reduced depth limit for faster search
         '''
         self.nodes_searched += 1
 
         # Stand pat score
         stand_pat = self.evaluate_board()
 
-        if depth >= 5:  # Limit quiescence depth
+        if depth >= 3:  # Reduced limit for faster search (was 5)
             return stand_pat
 
         if stand_pat >= beta:
@@ -341,8 +342,9 @@ class AI:
 
         # Futility Pruning: Skip moves at low depths if position is hopeless
         # Only apply at depth 1-3, not in check, and not in PV nodes
+        # Made more aggressive for faster search
         if not pv_node and not in_check and 1 <= depth <= 3:
-            futility_margin = [0, 200, 350, 500]  # Margins in centipawns for depth 1-3
+            futility_margin = [0, 300, 500, 700]  # More aggressive margins (was 200/350/500)
             static_eval = self.evaluate_board()
 
             # Forward futility pruning (for maximizing player)
