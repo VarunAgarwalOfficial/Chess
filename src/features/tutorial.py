@@ -9,74 +9,74 @@ class ChessTutorial:
         self.lessons = [
             {
                 "id": 1,
-                "title": "How the Pawn Moves",
+                "title": "Pawn",
                 "category": "basics",
                 "difficulty": "beginner",
                 "content": [
-                    "Pawns move forward one square at a time.",
-                    "On their first move, pawns can move forward two squares.",
-                    "Pawns capture diagonally one square forward.",
-                    "Pawns cannot move backward."
+                    "→ Moves forward one square",
+                    "→ First move: can go two squares",
+                    "→ Attacks diagonally (one square)",
+                    "→ Never moves backward"
                 ],
                 "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                 "key_points": [
-                    "Forward movement only",
+                    "Forward only",
                     "Diagonal captures",
-                    "Two-square first move option"
+                    "First move = 2 squares"
                 ]
             },
             {
                 "id": 2,
-                "title": "How the Knight Moves",
+                "title": "Knight",
                 "category": "basics",
                 "difficulty": "beginner",
                 "content": [
-                    "Knights move in an L-shape: two squares in one direction, then one square perpendicular.",
-                    "Knights are the only pieces that can jump over other pieces.",
-                    "Knights can control up to 8 squares from the center of the board.",
-                    "Knights are most powerful in the center of the board."
+                    "→ Moves in L-shape (2+1 squares)",
+                    "→ Can jump over other pieces",
+                    "→ Attacks where it lands",
+                    "→ Best in center of board"
                 ],
                 "fen": "8/8/8/3N4/8/8/8/8 w - - 0 1",
                 "key_points": [
-                    "L-shaped movement",
-                    "Can jump over pieces",
-                    "Strong in center"
+                    "L-shape movement",
+                    "Jumps over pieces",
+                    "Center = strong"
                 ]
             },
             {
                 "id": 3,
-                "title": "How the Bishop Moves",
+                "title": "Bishop",
                 "category": "basics",
                 "difficulty": "beginner",
                 "content": [
-                    "Bishops move diagonally any number of squares.",
-                    "Bishops cannot jump over pieces.",
-                    "Each bishop stays on its starting color (light or dark) forever.",
-                    "Having both bishops (the bishop pair) is usually an advantage."
+                    "→ Moves diagonally (any distance)",
+                    "→ Cannot jump over pieces",
+                    "→ Stays on same color squares",
+                    "→ You have one for each color"
                 ],
                 "fen": "8/8/8/3B4/8/8/8/8 w - - 0 1",
                 "key_points": [
                     "Diagonal movement",
-                    "Long range power",
-                    "Color-bound"
+                    "Long range",
+                    "Color-locked"
                 ]
             },
             {
                 "id": 4,
-                "title": "How the Rook Moves",
+                "title": "Rook",
                 "category": "basics",
                 "difficulty": "beginner",
                 "content": [
-                    "Rooks move horizontally or vertically any number of squares.",
-                    "Rooks cannot jump over pieces.",
-                    "Rooks are most powerful on open files (columns with no pawns).",
-                    "Two rooks working together can deliver checkmate."
+                    "→ Moves straight lines (any distance)",
+                    "→ Horizontal or vertical",
+                    "→ Cannot jump over pieces",
+                    "→ Very powerful piece"
                 ],
                 "fen": "8/8/8/3R4/8/8/8/8 w - - 0 1",
                 "key_points": [
-                    "Horizontal and vertical movement",
-                    "Powerful on open files",
-                    "Work well in pairs"
+                    "Straight lines",
+                    "Horizontal/vertical",
+                    "Second strongest piece"
                 ]
             },
             {
