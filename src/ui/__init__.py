@@ -215,47 +215,68 @@ class Game:
         self.create_menu()
 
     def create_menu(self):
-        '''Create main menu buttons'''
-        button_width = 320
-        button_height = 48
-        start_x = WIDTH // 2 - button_width // 2
-        start_y = 120
-        spacing = 58
+        '''Create main menu with better layout'''
+        # Two columns of buttons
+        col_width = 280
+        col_height = 52
+        col_spacing = 30
+        row_spacing = 20
+
+        # Left column - Game modes
+        left_x = WIDTH // 2 - col_width - col_spacing // 2
+        left_y = 180
+
+        # Right column - Other features
+        right_x = WIDTH // 2 + col_spacing // 2
+        right_y = 180
 
         self.menu_buttons = [
-            {"rect": pygame.Rect(start_x, start_y, button_width, button_height),
-             "text": "Player vs Player", "action": "pvp"},
-            {"rect": pygame.Rect(start_x, start_y + spacing, button_width, button_height),
-             "text": "Player vs AI (Easy)", "action": "pva_easy"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 2, button_width, button_height),
-             "text": "Player vs AI (Medium)", "action": "pva_medium"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 3, button_width, button_height),
-             "text": "Player vs AI (Hard)", "action": "pva_hard"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 4, button_width, button_height),
-             "text": "Player vs AI (Expert)", "action": "pva_expert"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 5, button_width, button_height),
-             "text": "Learn Chess", "action": "tutorial"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 6, button_width, button_height),
-             "text": "Solve Puzzles", "action": "puzzles"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 7, button_width, button_height),
-             "text": "Help", "action": "help"},
+            # Left column - Game modes
+            {"rect": pygame.Rect(left_x, left_y, col_width, col_height),
+             "text": "PLAYER VS PLAYER", "action": "pvp", "icon": "⚔"},
+            {"rect": pygame.Rect(left_x, left_y + col_height + row_spacing, col_width, col_height),
+             "text": "VS AI - EASY", "action": "pva_easy", "icon": "🤖"},
+            {"rect": pygame.Rect(left_x, left_y + (col_height + row_spacing) * 2, col_width, col_height),
+             "text": "VS AI - MEDIUM", "action": "pva_medium", "icon": "🤖"},
+            {"rect": pygame.Rect(left_x, left_y + (col_height + row_spacing) * 3, col_width, col_height),
+             "text": "VS AI - HARD", "action": "pva_hard", "icon": "🤖"},
+            {"rect": pygame.Rect(left_x, left_y + (col_height + row_spacing) * 4, col_width, col_height),
+             "text": "VS AI - EXPERT", "action": "pva_expert", "icon": "👑"},
+
+            # Right column - Features
+            {"rect": pygame.Rect(right_x, right_y, col_width, col_height),
+             "text": "LEARN CHESS", "action": "tutorial", "icon": "📖"},
+            {"rect": pygame.Rect(right_x, right_y + col_height + row_spacing, col_width, col_height),
+             "text": "SOLVE PUZZLES", "action": "puzzles", "icon": "🧩"},
+            {"rect": pygame.Rect(right_x, right_y + (col_height + row_spacing) * 2, col_width, col_height),
+             "text": "HELP", "action": "help", "icon": "❓"},
         ]
 
     def draw_menu(self):
-        '''Draw the main menu'''
+        '''Draw the redesigned main menu'''
         self.screen.fill(BLACK_BG)
 
-        # Title
-        title_text = "CHESS MASTER"
-        title_surface = self.font_h1.render(title_text, True, PINK_PRIMARY)
-        title_rect = title_surface.get_rect(center=(WIDTH // 2, 50))
+        # Header section
+        title_text = "CHESS"
+        title_surface = self.font_h1.render(title_text, True, WHITE)
+        title_rect = title_surface.get_rect(center=(WIDTH // 2, 60))
         self.screen.blit(title_surface, title_rect)
 
-        # Subtitle
-        subtitle_text = "Advanced Chess Engine with AI"
-        subtitle_surface = self.small_font.render(subtitle_text, True, TEXT_SECONDARY)
-        subtitle_rect = subtitle_surface.get_rect(center=(WIDTH // 2, 90))
+        subtitle_text = "Master the Game"
+        subtitle_surface = self.font_h3.render(subtitle_text, True, PINK_PRIMARY)
+        subtitle_rect = subtitle_surface.get_rect(center=(WIDTH // 2, 105))
         self.screen.blit(subtitle_surface, subtitle_rect)
+
+        # Section labels
+        left_label_x = WIDTH // 2 - 280 - 15
+        right_label_x = WIDTH // 2 + 15
+        label_y = 145
+
+        play_label = self.small_font.render("PLAY", True, PINK_BABY)
+        self.screen.blit(play_label, (left_label_x, label_y))
+
+        learn_label = self.small_font.render("LEARN", True, PINK_BABY)
+        self.screen.blit(learn_label, (right_label_x, label_y))
 
         # Buttons
         mouse_pos = pygame.mouse.get_pos()
@@ -263,12 +284,31 @@ class Game:
             hover = button["rect"].collidepoint(mouse_pos)
             draw_button(self.screen, button["rect"], button["text"], self.small_font, hover)
 
-        # Feature info at bottom
-        info_y = HEIGHT - 30
-        info_text = "40 Puzzles  |  20 Tutorials  |  Advanced AI Opponent"
-        info_surface = self.tiny_font.render(info_text, True, PINK_BABY)
-        info_rect = info_surface.get_rect(center=(WIDTH // 2, info_y))
-        self.screen.blit(info_surface, info_rect)
+        # Footer with features
+        footer_y = HEIGHT - 50
+
+        # Feature boxes
+        box_width = 180
+        box_height = 35
+        box_spacing = 10
+        total_width = box_width * 3 + box_spacing * 2
+        start_x = (WIDTH - total_width) // 2
+
+        features = [
+            ("20 Lessons", PINK_PRIMARY),
+            ("40 Puzzles", PINK_DARK),
+            ("Advanced AI", PINK_BABY)
+        ]
+
+        for i, (text, color) in enumerate(features):
+            box_x = start_x + i * (box_width + box_spacing)
+            box_rect = pygame.Rect(box_x, footer_y, box_width, box_height)
+            pygame.draw.rect(self.screen, color, box_rect)
+            pygame.draw.rect(self.screen, WHITE, box_rect, 1)
+
+            text_surface = self.tiny_font.render(text, True, WHITE)
+            text_rect = text_surface.get_rect(center=box_rect.center)
+            self.screen.blit(text_surface, text_rect)
 
     def handle_menu_click(self, pos):
         '''Handle clicks on menu buttons'''
@@ -435,8 +475,15 @@ class Game:
         # Draw AI thinking indicator
         if self.ai_thinking:
             thinking_text = "AI is thinking..."
-            thinking_surface = self.small_font.render(thinking_text, True, (255, 255, 0))
+            thinking_surface = self.small_font.render(thinking_text, True, PINK_BRIGHT)
             self.screen.blit(thinking_surface, (BOARD_SIZE // 2 - 80, HEIGHT - 30))
+
+        # Draw back button
+        mouse_pos = pygame.mouse.get_pos()
+        back_btn_rect = pygame.Rect(10, HEIGHT - 50, 120, 40)
+        back_hover = back_btn_rect.collidepoint(mouse_pos)
+        draw_button(self.screen, back_btn_rect, "← MENU", self.small_font, back_hover)
+        self.back_button_rect = back_btn_rect
 
     def draw_dashboard(self):
         '''Draw the right-side dashboard with Material UI design'''
@@ -647,7 +694,13 @@ class Game:
                 elif self.show_help:
                     self.handle_help_click(event.pos)
                 else:
-                    self.click_handler()
+                    # Check back button first
+                    if hasattr(self, 'back_button_rect') and self.back_button_rect.collidepoint(event.pos):
+                        self.show_menu = True
+                        self.square_selected = (-1,-1)
+                        self.legal_moves = []
+                    else:
+                        self.click_handler()
             elif event.type == pygame.QUIT:
                 self.running = False
                 pygame.quit()
