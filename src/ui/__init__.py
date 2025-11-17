@@ -1,5 +1,6 @@
 import pygame
 import sys
+import os
 import threading
 from game import Board
 from ai.ai import AI
@@ -50,10 +51,11 @@ IMAGES = {
 CLOCK = pygame.time.Clock()
 
 #loading images once
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
 pieces = ["rook", "knight", "bishop",  "king", "pawn" , "queen"]
 for piece in pieces:
-    IMAGES["black"][piece] = pygame.image.load("images/black/" + piece + ".png")
-    IMAGES["white"][piece] = pygame.image.load("images/white/" + piece + ".png")
+    IMAGES["black"][piece] = pygame.image.load(os.path.join(ASSETS_DIR, "images", "black", piece + ".png"))
+    IMAGES["white"][piece] = pygame.image.load(os.path.join(ASSETS_DIR, "images", "white", piece + ".png"))
 
 
 
