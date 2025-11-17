@@ -1,5 +1,6 @@
 import pygame
 import sys
+import os
 import threading
 from game import Board
 from ai.ai import AI
@@ -14,33 +15,55 @@ Declaring Constants
 '''
 
 
-# COLORS
-LIGHT = (241,218,179)
-DARK = (182,136,96)
-LIGHT_SELECTED = "#00BCD4"
-DARK_SELECTED = "#08a8c6"
+# SHARP DESIGN - Black, Pink, White, Baby Pink Theme
+# Pink palette
+PINK_PRIMARY = (236, 64, 122)     # #EC407A - Main pink
+PINK_BABY = (248, 187, 208)       # #F8BBD0 - Baby pink
+PINK_DARK = (173, 20, 87)         # #AD1457 - Dark pink
+PINK_BRIGHT = (255, 64, 129)      # #FF4081 - Bright accent
 
-HILIGHT = (0,188,212 , 50)
-HILIGHT_CAPTURE = (173,238,126 , 150)
+# Base colors
+BLACK = (0, 0, 0)                 # Pure black
+WHITE = (255, 255, 255)           # Pure white
+GRAY_DARK = (33, 33, 33)          # Dark gray for surfaces
+GRAY_MED = (66, 66, 66)           # Medium gray
+GRAY_LIGHT = (158, 158, 158)      # Light gray
 
-# Dashboard colors
-DASHBOARD_BG = (40, 40, 40)
-EVAL_BAR_WHITE = (220, 220, 220)
-EVAL_BAR_BLACK = (60, 60, 60)
-TEXT_COLOR = (255, 255, 255)
-BUTTON_COLOR = (70, 130, 180)
-BUTTON_HOVER = (100, 160, 210)
+# Board colors - high contrast
+LIGHT = (245, 245, 245)           # Light squares - almost white
+DARK = (90, 90, 90)               # Dark squares - medium gray
+LIGHT_SELECTED = PINK_PRIMARY     # Pink for selected light
+DARK_SELECTED = PINK_DARK         # Dark pink for selected dark
+
+# Highlight colors
+HILIGHT = (236, 64, 122, 120)     # Pink highlight
+HILIGHT_CAPTURE = (255, 64, 129, 150)  # Bright pink for captures
+
+# UI colors
+BLACK_BG = BLACK
+DASHBOARD_BG = GRAY_DARK
+SURFACE = GRAY_DARK
+SURFACE_ELEVATED = GRAY_MED
+EVAL_BAR_WHITE = WHITE
+EVAL_BAR_BLACK = GRAY_DARK
+TEXT_PRIMARY = WHITE
+TEXT_SECONDARY = GRAY_LIGHT
+TEXT_DISABLED = (117, 117, 117)
+BUTTON_COLOR = PINK_PRIMARY
+BUTTON_HOVER = PINK_BRIGHT
+BUTTON_DISABLED = GRAY_MED
+BUTTON_TEXT = WHITE
 
 
 COLORS = [LIGHT , DARK , LIGHT_SELECTED , DARK_SELECTED]
 
-BOARD_SIZE = 480
-DASHBOARD_WIDTH = 320
+BOARD_SIZE = 560
+DASHBOARD_WIDTH = 380
 WIDTH = BOARD_SIZE + DASHBOARD_WIDTH
 HEIGHT = BOARD_SIZE
 DIMENSION = 8
-PIECE_HEIGHT = 60
-FPS = 30
+PIECE_HEIGHT = 70
+FPS = 60  # Smoother animations
 IMAGES = {
     "black": {},
     "white": {}
@@ -50,12 +73,77 @@ IMAGES = {
 CLOCK = pygame.time.Clock()
 
 #loading images once
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets")
 pieces = ["rook", "knight", "bishop",  "king", "pawn" , "queen"]
 for piece in pieces:
-    IMAGES["black"][piece] = pygame.image.load("images/black/" + piece + ".png")
-    IMAGES["white"][piece] = pygame.image.load("images/white/" + piece + ".png")
+    IMAGES["black"][piece] = pygame.image.load(os.path.join(ASSETS_DIR, "images", "black", piece + ".png"))
+    IMAGES["white"][piece] = pygame.image.load(os.path.join(ASSETS_DIR, "images", "white", piece + ".png"))
 
 
+'''
+Sharp Design Helper Functions
+'''
+
+def draw_card(surface, rect, elevated=False):
+    '''Draw a sharp-edged card'''
+    # Card surface
+    color = SURFACE_ELEVATED if elevated else SURFACE
+    pygame.draw.rect(surface, color, rect)
+
+    # Border
+    border_color = GRAY_MED if elevated else (50, 50, 50)
+    pygame.draw.rect(surface, border_color, rect, 2)
+
+def draw_button(surface, rect, text, font, hover=False, disabled=False):
+    '''Draw a sharp-edged button'''
+    # Button color based on state
+    if disabled:
+        color = BUTTON_DISABLED
+        text_color = TEXT_DISABLED
+    elif hover:
+        color = BUTTON_HOVER
+        text_color = WHITE
+    else:
+        color = BUTTON_COLOR
+        text_color = WHITE
+
+    # Button surface
+    pygame.draw.rect(surface, color, rect)
+
+    # Sharp border
+    border_color = PINK_BRIGHT if hover else WHITE
+    pygame.draw.rect(surface, border_color, rect, 2)
+
+    # Button text
+    text_surface = font.render(text, True, text_color)
+    text_rect = text_surface.get_rect(center=rect.center)
+    surface.blit(text_surface, text_rect)
+
+def draw_back_button(surface, x, y, font, hover=False):
+    '''Draw a back button'''
+    button_rect = pygame.Rect(x, y, 140, 45)
+    draw_button(surface, button_rect, "← BACK", font, hover)
+    return button_rect
+
+def draw_chip(surface, x, y, text, font, color=PINK_PRIMARY):
+    '''Draw a sharp chip/tag'''
+    text_surface = font.render(text, True, WHITE)
+    padding = 10
+    chip_width = text_surface.get_width() + padding * 2
+    chip_height = text_surface.get_height() + padding
+
+    chip_rect = pygame.Rect(x, y, chip_width, chip_height)
+    pygame.draw.rect(surface, color, chip_rect)
+    pygame.draw.rect(surface, PINK_BRIGHT, chip_rect, 1)
+
+    text_rect = text_surface.get_rect(center=chip_rect.center)
+    surface.blit(text_surface, text_rect)
+
+    return chip_width + 8
+
+def draw_divider(surface, x, y, width):
+    '''Draw a divider line'''
+    pygame.draw.line(surface, GRAY_MED, (x, y), (x + width, y), 2)
 
 
 
@@ -68,9 +156,14 @@ class Game:
         pygame.display.set_caption("Chess - Python Edition")
         self.running = True
         self.square_selected = (-1,-1)
-        self.font = pygame.font.Font(None, 36)
-        self.small_font = pygame.font.Font(None, 24)
-        self.tiny_font = pygame.font.Font(None, 18)
+
+        # Material UI Typography
+        self.font_h1 = pygame.font.Font(None, 64)  # Large titles
+        self.font_h2 = pygame.font.Font(None, 48)  # Section headers
+        self.font_h3 = pygame.font.Font(None, 32)  # Subsection headers
+        self.font = pygame.font.Font(None, 28)     # Body text
+        self.small_font = pygame.font.Font(None, 22)  # Small text
+        self.tiny_font = pygame.font.Font(None, 18)   # Caption text
 
         # Game mode settings
         self.game_mode = "pvp"  # "pvp", "pva" (player vs AI), "ava" (AI vs AI)
@@ -122,65 +215,74 @@ class Game:
         self.create_menu()
 
     def create_menu(self):
-        '''Create main menu buttons'''
-        button_width = 280
-        button_height = 45
-        start_x = WIDTH // 2 - button_width // 2
-        start_y = 100
-        spacing = 55
+        '''Create main menu with better layout'''
+        # Two columns of buttons
+        col_width = 280
+        col_height = 52
+        col_spacing = 30
+        row_spacing = 20
+
+        # Left column - Game modes
+        left_x = WIDTH // 2 - col_width - col_spacing // 2
+        left_y = 180
+
+        # Right column - Other features
+        right_x = WIDTH // 2 + col_spacing // 2
+        right_y = 180
 
         self.menu_buttons = [
-            {"rect": pygame.Rect(start_x, start_y, button_width, button_height),
-             "text": "Player vs Player", "action": "pvp"},
-            {"rect": pygame.Rect(start_x, start_y + spacing, button_width, button_height),
-             "text": "Player vs AI (Easy)", "action": "pva_easy"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 2, button_width, button_height),
-             "text": "Player vs AI (Medium)", "action": "pva_medium"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 3, button_width, button_height),
-             "text": "Player vs AI (Hard)", "action": "pva_hard"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 4, button_width, button_height),
-             "text": "Player vs AI (Expert)", "action": "pva_expert"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 5, button_width, button_height),
-             "text": "Learn Chess (Tutorial)", "action": "tutorial"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 6, button_width, button_height),
-             "text": "Solve Puzzles (40 Tactics)", "action": "puzzles"},
-            {"rect": pygame.Rect(start_x, start_y + spacing * 7, button_width, button_height),
-             "text": "Help & Instructions", "action": "help"},
+            # Left column - Game modes
+            {"rect": pygame.Rect(left_x, left_y, col_width, col_height),
+             "text": "PLAYER VS PLAYER", "action": "pvp", "icon": "⚔"},
+            {"rect": pygame.Rect(left_x, left_y + col_height + row_spacing, col_width, col_height),
+             "text": "VS AI - EASY", "action": "pva_easy", "icon": "🤖"},
+            {"rect": pygame.Rect(left_x, left_y + (col_height + row_spacing) * 2, col_width, col_height),
+             "text": "VS AI - MEDIUM", "action": "pva_medium", "icon": "🤖"},
+            {"rect": pygame.Rect(left_x, left_y + (col_height + row_spacing) * 3, col_width, col_height),
+             "text": "VS AI - HARD", "action": "pva_hard", "icon": "🤖"},
+            {"rect": pygame.Rect(left_x, left_y + (col_height + row_spacing) * 4, col_width, col_height),
+             "text": "VS AI - EXPERT", "action": "pva_expert", "icon": "👑"},
+
+            # Right column - Features
+            {"rect": pygame.Rect(right_x, right_y, col_width, col_height),
+             "text": "LEARN CHESS", "action": "tutorial", "icon": "📖"},
+            {"rect": pygame.Rect(right_x, right_y + col_height + row_spacing, col_width, col_height),
+             "text": "SOLVE PUZZLES", "action": "puzzles", "icon": "🧩"},
+            {"rect": pygame.Rect(right_x, right_y + (col_height + row_spacing) * 2, col_width, col_height),
+             "text": "HELP", "action": "help", "icon": "❓"},
         ]
 
     def draw_menu(self):
-        '''Draw the main menu'''
-        self.screen.fill(DASHBOARD_BG)
+        '''Draw the redesigned main menu'''
+        self.screen.fill(BLACK_BG)
 
-        # Title
-        title_font = pygame.font.Font(None, 56)
-        title_text = "Chess Master"
-        title_surface = title_font.render(title_text, True, TEXT_COLOR)
-        title_rect = title_surface.get_rect(center=(WIDTH // 2, 50))
+        # Header section
+        title_text = "CHESS"
+        title_surface = self.font_h1.render(title_text, True, WHITE)
+        title_rect = title_surface.get_rect(center=(WIDTH // 2, 60))
         self.screen.blit(title_surface, title_rect)
 
-        # Subtitle
-        subtitle_text = "Professional Chess Engine with AI & Learning Tools"
-        subtitle_surface = self.tiny_font.render(subtitle_text, True, (180, 180, 180))
-        subtitle_rect = subtitle_surface.get_rect(center=(WIDTH // 2, 78))
+        subtitle_text = "Master the Game"
+        subtitle_surface = self.font_h3.render(subtitle_text, True, PINK_PRIMARY)
+        subtitle_rect = subtitle_surface.get_rect(center=(WIDTH // 2, 105))
         self.screen.blit(subtitle_surface, subtitle_rect)
+
+        # Section labels
+        left_label_x = WIDTH // 2 - 280 - 15
+        right_label_x = WIDTH // 2 + 15
+        label_y = 145
+
+        play_label = self.small_font.render("PLAY", True, PINK_BABY)
+        self.screen.blit(play_label, (left_label_x, label_y))
+
+        learn_label = self.small_font.render("LEARN", True, PINK_BABY)
+        self.screen.blit(learn_label, (right_label_x, label_y))
 
         # Buttons
         mouse_pos = pygame.mouse.get_pos()
         for button in self.menu_buttons:
-            color = BUTTON_HOVER if button["rect"].collidepoint(mouse_pos) else BUTTON_COLOR
-            pygame.draw.rect(self.screen, color, button["rect"], border_radius=10)
-            pygame.draw.rect(self.screen, TEXT_COLOR, button["rect"], 2, border_radius=10)
-
-            text_surface = self.small_font.render(button["text"], True, TEXT_COLOR)
-            text_rect = text_surface.get_rect(center=button["rect"].center)
-            self.screen.blit(text_surface, text_rect)
-
-        # Footer
-        footer_text = "40 Puzzles | 20 Tutorials | Advanced AI with Optimizations"
-        footer_surface = self.tiny_font.render(footer_text, True, (140, 140, 140))
-        footer_rect = footer_surface.get_rect(center=(WIDTH // 2, HEIGHT - 20))
-        self.screen.blit(footer_surface, footer_rect)
+            hover = button["rect"].collidepoint(mouse_pos)
+            draw_button(self.screen, button["rect"], button["text"], self.small_font, hover)
 
     def handle_menu_click(self, pos):
         '''Handle clicks on menu buttons'''
@@ -283,8 +385,9 @@ class Game:
         self.move_history_display = []
         self.captured_pieces = {"white": [], "black": []}
 
-        if mode == "pva":
-            self.ai = AI(self.board, color=self.ai_color, difficulty=difficulty)
+        # Always create AI for evaluation (even in PvP mode)
+        # In PvP, AI is used only for position evaluation, not for making moves
+        self.ai = AI(self.board, color=self.ai_color, difficulty=difficulty)
 
     #drawing things
     def draw(self):
@@ -346,133 +449,201 @@ class Game:
         # Draw AI thinking indicator
         if self.ai_thinking:
             thinking_text = "AI is thinking..."
-            thinking_surface = self.small_font.render(thinking_text, True, (255, 255, 0))
+            thinking_surface = self.small_font.render(thinking_text, True, PINK_BRIGHT)
             self.screen.blit(thinking_surface, (BOARD_SIZE // 2 - 80, HEIGHT - 30))
 
+        # Draw back button in dashboard area (right side)
+        mouse_pos = pygame.mouse.get_pos()
+        back_btn_rect = pygame.Rect(BOARD_SIZE + 20, HEIGHT - 55, 140, 45)
+        back_hover = back_btn_rect.collidepoint(mouse_pos)
+        draw_button(self.screen, back_btn_rect, "← MENU", self.small_font, back_hover)
+        self.back_button_rect = back_btn_rect
+
     def draw_dashboard(self):
-        '''Draw the right-side dashboard'''
+        '''Draw the right-side dashboard with Material UI design'''
         dashboard_x = BOARD_SIZE
         dashboard_y = 0
 
         # Background
-        pygame.draw.rect(self.screen, DASHBOARD_BG,
+        pygame.draw.rect(self.screen, BLACK_BG,
                         pygame.Rect(dashboard_x, dashboard_y, DASHBOARD_WIDTH, HEIGHT))
 
-        y_offset = 10
+        margin = 16
+        y_offset = margin
 
-        # Game mode
-        mode_text = f"Mode: {self.game_mode.upper()}"
+        # Game Info Card
+        card_rect = pygame.Rect(dashboard_x + margin, y_offset, DASHBOARD_WIDTH - margin * 2, 140)
+        draw_card(self.screen, card_rect, elevated=True)
+
+        # Card content
+        card_y = y_offset + 16
+
+        # Game mode with chip
+        mode_text = self.game_mode.upper()
         if self.game_mode == "pva":
-            mode_text += f" ({self.difficulty.capitalize()})"
-        mode_surface = self.small_font.render(mode_text, True, TEXT_COLOR)
-        self.screen.blit(mode_surface, (dashboard_x + 10, y_offset))
-        y_offset += 35
+            mode_text += f" - {self.difficulty.capitalize()}"
+        draw_chip(self.screen, dashboard_x + margin + 16, card_y, mode_text, self.tiny_font, PINK_PRIMARY)
+        card_y += 40
 
-        # Current turn
+        # Current turn with pink indicator
         turn_text = f"Turn: {self.board.to_move.capitalize()}"
-        turn_surface = self.small_font.render(turn_text, True, TEXT_COLOR)
-        self.screen.blit(turn_surface, (dashboard_x + 10, y_offset))
-        y_offset += 35
+        turn_color = PINK_BRIGHT if self.board.to_move == "white" else PINK_BABY
+        turn_surface = self.small_font.render(turn_text, True, turn_color)
+        self.screen.blit(turn_surface, (dashboard_x + margin + 16, card_y))
+        card_y += 32
 
         # Current opening
-        opening_text = f"Opening: {self.opening_book.get_current_opening()}"
-        opening_surface = self.tiny_font.render(opening_text, True, (200, 200, 200))
-        self.screen.blit(opening_surface, (dashboard_x + 10, y_offset))
-        y_offset += 25
+        opening_text = self.opening_book.get_current_opening()
+        if len(opening_text) > 30:
+            opening_text = opening_text[:27] + "..."
+        opening_label = self.tiny_font.render("Opening:", True, TEXT_DISABLED)
+        self.screen.blit(opening_label, (dashboard_x + margin + 16, card_y))
+        card_y += 20
+        opening_surface = self.tiny_font.render(opening_text, True, TEXT_SECONDARY)
+        self.screen.blit(opening_surface, (dashboard_x + margin + 16, card_y))
+
+        y_offset += 156
 
         # Evaluation bar
-        y_offset = self.draw_evaluation_bar(dashboard_x, y_offset)
+        y_offset = self.draw_evaluation_bar(dashboard_x, y_offset, margin)
 
         # Captured pieces
-        y_offset = self.draw_captured_pieces(dashboard_x, y_offset)
+        y_offset = self.draw_captured_pieces(dashboard_x, y_offset, margin)
 
         # Move history
-        y_offset = self.draw_move_history(dashboard_x, y_offset)
+        y_offset = self.draw_move_history(dashboard_x, y_offset, margin)
 
-    def draw_evaluation_bar(self, x, y):
-        '''Draw the evaluation bar showing position advantage'''
-        bar_width = DASHBOARD_WIDTH - 20
-        bar_height = 30
-        margin = 10
+    def draw_evaluation_bar(self, x, y, margin):
+        '''Draw the evaluation bar'''
+        # Evaluation Card
+        card_height = 110
+        card_rect = pygame.Rect(x + margin, y, DASHBOARD_WIDTH - margin * 2, card_height)
+        draw_card(self.screen, card_rect)
 
-        # Calculate evaluation if AI exists
-        if self.ai and not self.board.game_over:
+        # Calculate evaluation if AI exists and not thinking (to avoid board corruption)
+        if self.ai and not self.board.game_over and not self.ai_thinking:
             self.current_eval = self.ai.evaluate_board() / 100.0  # Convert centipawns to pawns
 
         # Clamp evaluation between -10 and +10 for display
         display_eval = max(-10, min(10, self.current_eval))
 
+        # Card title
+        title_surface = self.small_font.render("Position Evaluation", True, TEXT_PRIMARY)
+        self.screen.blit(title_surface, (x + margin + 16, y + 12))
+
+        # Evaluation bar
+        bar_y = y + 45
+        bar_width = DASHBOARD_WIDTH - margin * 2 - 32
+        bar_height = 32
+
         # Calculate bar fill (0 = all black, 1 = all white)
         white_percentage = (display_eval + 10) / 20.0
 
-        # Draw bar background
-        pygame.draw.rect(self.screen, EVAL_BAR_BLACK,
-                        pygame.Rect(x + margin, y, bar_width, bar_height))
+        # Bar background
+        bar_rect = pygame.Rect(x + margin + 16, bar_y, bar_width, bar_height)
+        pygame.draw.rect(self.screen, GRAY_MED, bar_rect)
 
-        # Draw white portion
+        # White portion (advantage for white)
         white_width = int(bar_width * white_percentage)
-        pygame.draw.rect(self.screen, EVAL_BAR_WHITE,
-                        pygame.Rect(x + margin, y, white_width, bar_height))
+        if white_width > 0:
+            white_rect = pygame.Rect(x + margin + 16, bar_y, white_width, bar_height)
+            pygame.draw.rect(self.screen, PINK_BABY, white_rect)
 
-        # Draw border
-        pygame.draw.rect(self.screen, TEXT_COLOR,
-                        pygame.Rect(x + margin, y, bar_width, bar_height), 2)
+        # Black portion (advantage for black)
+        black_width = bar_width - white_width
+        if black_width > 0:
+            black_rect = pygame.Rect(x + margin + 16 + white_width, bar_y, black_width, bar_height)
+            pygame.draw.rect(self.screen, GRAY_DARK, black_rect)
 
-        # Draw evaluation text
-        eval_text = f"Eval: {self.current_eval:+.2f}"
-        eval_surface = self.tiny_font.render(eval_text, True, TEXT_COLOR)
-        self.screen.blit(eval_surface, (x + margin + bar_width // 2 - 30, y + 7))
+        # Center line
+        center_x = x + margin + 16 + bar_width // 2
+        pygame.draw.line(self.screen, WHITE,
+                        (center_x, bar_y), (center_x, bar_y + bar_height), 2)
 
-        return y + bar_height + 20
+        # Border
+        pygame.draw.rect(self.screen, WHITE, bar_rect, 2)
 
-    def draw_captured_pieces(self, x, y):
+        # Evaluation text
+        eval_text = f"{self.current_eval:+.2f}"
+        eval_color = PINK_PRIMARY if self.current_eval > 0 else WHITE
+        eval_surface = self.font.render(eval_text, True, eval_color)
+        eval_rect = eval_surface.get_rect(center=(center_x, bar_y + bar_height + 18))
+        self.screen.blit(eval_surface, eval_rect)
+
+        return y + card_height + margin
+
+    def draw_captured_pieces(self, x, y, margin):
         '''Draw captured pieces'''
-        margin = 10
+        # Captured Pieces Card
+        card_height = 90
+        card_rect = pygame.Rect(x + margin, y, DASHBOARD_WIDTH - margin * 2, card_height)
+        draw_card(self.screen, card_rect)
 
-        # Title
-        title_surface = self.tiny_font.render("Captured Pieces:", True, TEXT_COLOR)
-        self.screen.blit(title_surface, (x + margin, y))
-        y += 25
+        # Card title
+        title_surface = self.small_font.render("Captured", True, TEXT_PRIMARY)
+        self.screen.blit(title_surface, (x + margin + 16, y + 12))
+
+        card_y = y + 42
 
         # White's captures (black pieces)
-        white_captures_text = "White: "
+        white_label = self.tiny_font.render("White:", True, PINK_BABY)
+        self.screen.blit(white_label, (x + margin + 16, card_y))
+
+        white_captures_text = ""
         for piece_type in self.captured_pieces["black"]:
             white_captures_text += f"{piece_type[0].upper()} "
-        white_surface = self.tiny_font.render(white_captures_text, True, TEXT_COLOR)
-        self.screen.blit(white_surface, (x + margin, y))
-        y += 20
+        if not white_captures_text:
+            white_captures_text = "None"
+        white_surface = self.tiny_font.render(white_captures_text, True, WHITE)
+        self.screen.blit(white_surface, (x + margin + 80, card_y))
+        card_y += 22
 
         # Black's captures (white pieces)
-        black_captures_text = "Black: "
+        black_label = self.tiny_font.render("Black:", True, TEXT_SECONDARY)
+        self.screen.blit(black_label, (x + margin + 16, card_y))
+
+        black_captures_text = ""
         for piece_type in self.captured_pieces["white"]:
             black_captures_text += f"{piece_type[0].upper()} "
-        black_surface = self.tiny_font.render(black_captures_text, True, TEXT_COLOR)
-        self.screen.blit(black_surface, (x + margin, y))
-        y += 30
+        if not black_captures_text:
+            black_captures_text = "None"
+        black_surface = self.tiny_font.render(black_captures_text, True, WHITE)
+        self.screen.blit(black_surface, (x + margin + 80, card_y))
 
-        return y
+        return y + card_height + margin
 
-    def draw_move_history(self, x, y):
-        '''Draw move history'''
-        margin = 10
+    def draw_move_history(self, x, y, margin):
+        '''Draw move history with Material UI design'''
+        # Calculate available height
+        available_height = HEIGHT - y - margin
 
-        # Title
-        title_surface = self.tiny_font.render("Move History:", True, TEXT_COLOR)
-        self.screen.blit(title_surface, (x + margin, y))
-        y += 25
+        # Move History Card
+        card_rect = pygame.Rect(x + margin, y, DASHBOARD_WIDTH - margin * 2, available_height)
+        draw_card(self.screen, card_rect)
 
-        # Display last 15 moves
-        start_index = max(0, len(self.move_history_display) - 15)
+        # Card title
+        title_surface = self.small_font.render("Move History", True, TEXT_PRIMARY)
+        self.screen.blit(title_surface, (x + margin + 16, y + 12))
+
+        draw_divider(self.screen, x + margin + 16, y + 40, DASHBOARD_WIDTH - margin * 2 - 32)
+
+        # Display moves
+        move_y = y + 50
+        max_moves = int((available_height - 60) / 20)
+        start_index = max(0, len(self.move_history_display) - max_moves)
+
         for i in range(start_index, len(self.move_history_display)):
             move_text = self.move_history_display[i]
-            move_surface = self.tiny_font.render(move_text, True, (200, 200, 200))
-            self.screen.blit(move_surface, (x + margin, y))
-            y += 18
+            # Alternate colors for readability
+            color = TEXT_PRIMARY if i == len(self.move_history_display) - 1 else TEXT_SECONDARY
+            move_surface = self.tiny_font.render(move_text, True, color)
+            self.screen.blit(move_surface, (x + margin + 16, move_y))
+            move_y += 20
 
-            if y > HEIGHT - 30:
+            if move_y > HEIGHT - margin - 20:
                 break
 
-        return y
+        return HEIGHT
 
     def run(self):
         while self.running:
@@ -497,7 +668,13 @@ class Game:
                 elif self.show_help:
                     self.handle_help_click(event.pos)
                 else:
-                    self.click_handler()
+                    # Check back button first
+                    if hasattr(self, 'back_button_rect') and self.back_button_rect.collidepoint(event.pos):
+                        self.show_menu = True
+                        self.square_selected = (-1,-1)
+                        self.legal_moves = []
+                    else:
+                        self.click_handler()
             elif event.type == pygame.QUIT:
                 self.running = False
                 pygame.quit()
@@ -590,41 +767,62 @@ class Game:
     def draw_game_over(self):
         # Semi-transparent overlay
         overlay = pygame.Surface((BOARD_SIZE, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
+        overlay.fill((0, 0, 0, 200))
         self.screen.blit(overlay, (0, 0))
 
-        # Determine message based on result
+        # Material UI Card for game result
+        card_width = 420
+        card_height = 180
+        card_x = (BOARD_SIZE - card_width) // 2
+        card_y = (HEIGHT - card_height) // 2
+        card_rect = pygame.Rect(card_x, card_y, card_width, card_height)
+        draw_card(self.screen, card_rect, elevated=True)
+
+        # Determine message and color based on result
         if self.board.game_result == "checkmate_white":
-            message = "Checkmate! White Wins!"
-            color = (255, 255, 255)
+            title = "Checkmate!"
+            subtitle = "White Wins"
+            color = PINK_BRIGHT
         elif self.board.game_result == "checkmate_black":
-            message = "Checkmate! Black Wins!"
-            color = (50, 50, 50)
+            title = "Checkmate!"
+            subtitle = "Black Wins"
+            color = PINK_BABY
         elif self.board.game_result == "stalemate":
-            message = "Stalemate! Draw!"
-            color = (200, 200, 0)
+            title = "Draw!"
+            subtitle = "Stalemate"
+            color = TEXT_SECONDARY
         elif self.board.game_result == "insufficient_material":
-            message = "Draw by Insufficient Material!"
-            color = (200, 200, 0)
+            title = "Draw!"
+            subtitle = "Insufficient Material"
+            color = TEXT_SECONDARY
         elif self.board.game_result == "fifty_move_rule":
-            message = "Draw by Fifty Move Rule!"
-            color = (200, 200, 0)
+            title = "Draw!"
+            subtitle = "Fifty Move Rule"
+            color = TEXT_SECONDARY
         elif self.board.game_result == "threefold_repetition":
-            message = "Draw by Threefold Repetition!"
-            color = (200, 200, 0)
+            title = "Draw!"
+            subtitle = "Threefold Repetition"
+            color = TEXT_SECONDARY
         else:
-            message = "Game Over!"
-            color = (255, 255, 255)
+            title = "Game Over!"
+            subtitle = ""
+            color = TEXT_PRIMARY
 
-        # Render main message
-        text_surface = self.font.render(message, True, color)
-        text_rect = text_surface.get_rect(center=(BOARD_SIZE // 2, HEIGHT // 2 - 20))
-        self.screen.blit(text_surface, text_rect)
+        # Render title
+        title_surface = self.font_h2.render(title, True, color)
+        title_rect = title_surface.get_rect(center=(BOARD_SIZE // 2, card_y + 50))
+        self.screen.blit(title_surface, title_rect)
 
-        # Render instruction
+        # Render subtitle
+        if subtitle:
+            subtitle_surface = self.font.render(subtitle, True, TEXT_SECONDARY)
+            subtitle_rect = subtitle_surface.get_rect(center=(BOARD_SIZE // 2, card_y + 95))
+            self.screen.blit(subtitle_surface, subtitle_rect)
+
+        # Render instruction with chip-like styling
         instruction = "Press R to return to menu"
-        instruction_surface = self.small_font.render(instruction, True, (255, 255, 255))
-        instruction_rect = instruction_surface.get_rect(center=(BOARD_SIZE // 2, HEIGHT // 2 + 20))
+        instruction_surface = self.small_font.render(instruction, True, TEXT_DISABLED)
+        instruction_rect = instruction_surface.get_rect(center=(BOARD_SIZE // 2, card_y + 140))
         self.screen.blit(instruction_surface, instruction_rect)
 
     '''
@@ -640,7 +838,7 @@ class Game:
         if click[0] >= BOARD_SIZE:
             return
 
-        pos = (click[1]// 60 , click[0]// 60 )
+        pos = (click[1]// (BOARD_SIZE // 8) , click[0]// (BOARD_SIZE // 8) )
 
         if(pos[0] < 0 or pos[1] < 0 or pos[0] > 7 or pos[1] > 7):
             return
@@ -712,45 +910,52 @@ class Game:
 
 
     def draw_tutorial(self):
-        '''Draw tutorial screen'''
-        self.screen.fill(DASHBOARD_BG)
+        '''Draw tutorial screen with visual board'''
+        self.screen.fill(BLACK_BG)
 
         lesson = self.tutorial.get_lesson()
         if not lesson:
             return
 
+        # Split screen: text on left, board on right
+        text_width = WIDTH // 2 - 50
+        board_x = WIDTH // 2 + 50
+        board_size = 320
+
         # Header
-        header_font = pygame.font.Font(None, 40)
         title = f"Lesson {lesson['id']}: {lesson['title']}"
-        title_surface = header_font.render(title, True, TEXT_COLOR)
-        self.screen.blit(title_surface, (20, 20))
+        title_surface = self.font_h2.render(title, True, PINK_PRIMARY)
+        self.screen.blit(title_surface, (30, 30))
 
-        # Category and difficulty
-        info = f"{lesson['category'].replace('_', ' ').title()} | {lesson['difficulty'].title()}"
-        info_surface = self.tiny_font.render(info, True, (180, 180, 180))
-        self.screen.blit(info_surface, (20, 60))
+        # Category
+        info = f"{lesson['category'].replace('_', ' ').title()}"
+        info_surface = self.tiny_font.render(info, True, PINK_BABY)
+        self.screen.blit(info_surface, (30, 75))
 
-        # Content
-        y_pos = 100
+        # Content with arrows and clean formatting
+        y_pos = 120
         for line in lesson['content']:
-            if y_pos > HEIGHT - 150:
+            if y_pos > HEIGHT - 180:
                 break
-            text_surface = self.tiny_font.render(line, True, TEXT_COLOR)
-            self.screen.blit(text_surface, (20, y_pos))
-            y_pos += 25
+            text_surface = self.small_font.render(line, True, WHITE)
+            self.screen.blit(text_surface, (30, y_pos))
+            y_pos += 35
 
-        # Key points
-        y_pos += 10
-        points_title = self.small_font.render("Key Points:", True, (100, 200, 255))
-        self.screen.blit(points_title, (20, y_pos))
+        # Key points section
+        y_pos += 20
+        points_title = self.small_font.render("Quick Summary:", True, PINK_BABY)
+        self.screen.blit(points_title, (30, y_pos))
         y_pos += 30
 
         for point in lesson['key_points']:
-            if y_pos > HEIGHT - 100:
+            if y_pos > HEIGHT - 110:
                 break
-            text_surface = self.tiny_font.render(f"- {point}", True, (150, 220, 150))
-            self.screen.blit(text_surface, (30, y_pos))
+            text_surface = self.tiny_font.render(f"✓ {point}", True, PINK_BABY)
+            self.screen.blit(text_surface, (35, y_pos))
             y_pos += 22
+
+        # Draw visual chessboard on right side
+        self.draw_lesson_board(board_x, 100, board_size, lesson['fen'])
 
         # Navigation buttons
         btn_width = 120
@@ -759,29 +964,84 @@ class Game:
 
         # Back to menu
         back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect, border_radius=8)
-        back_text = self.tiny_font.render("Back to Menu", True, TEXT_COLOR)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect)
+        pygame.draw.rect(self.screen, WHITE, back_rect, 2)
+        back_text = self.tiny_font.render("Back to Menu", True, TEXT_PRIMARY)
         self.screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.centery - back_text.get_height()//2))
 
         # Previous
         if self.tutorial.current_lesson_index > 0:
             prev_rect = pygame.Rect(WIDTH//2 - 130, btn_y, btn_width, btn_height)
-            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect, border_radius=8)
-            prev_text = self.tiny_font.render("< Previous", True, TEXT_COLOR)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect)
+            pygame.draw.rect(self.screen, WHITE, prev_rect, 2)
+            prev_text = self.tiny_font.render("< Previous", True, TEXT_PRIMARY)
             self.screen.blit(prev_text, (prev_rect.centerx - prev_text.get_width()//2, prev_rect.centery - prev_text.get_height()//2))
 
         # Progress
         progress = self.tutorial.get_progress()
-        progress_text = f"Lesson {progress['current']} / {progress['total']}"
-        progress_surface = self.tiny_font.render(progress_text, True, (180, 180, 180))
+        progress_text = f"Lesson {progress['current_lesson']} / {progress['total']}"
+        progress_surface = self.tiny_font.render(progress_text, True, TEXT_SECONDARY)
         self.screen.blit(progress_surface, (WIDTH//2 - progress_surface.get_width()//2, btn_y + 10))
 
         # Next
         if self.tutorial.current_lesson_index < len(self.tutorial.lessons) - 1:
             next_rect = pygame.Rect(WIDTH//2 + 10, btn_y, btn_width, btn_height)
-            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect, border_radius=8)
-            next_text = self.tiny_font.render("Next >", True, TEXT_COLOR)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect)
+            pygame.draw.rect(self.screen, WHITE, next_rect, 2)
+            next_text = self.tiny_font.render("Next >", True, TEXT_PRIMARY)
             self.screen.blit(next_text, (next_rect.centerx - next_text.get_width()//2, next_rect.centery - next_text.get_height()//2))
+
+    def draw_lesson_board(self, x, y, size, fen):
+        '''Draw a chessboard from FEN notation for tutorial lessons'''
+        if not fen:
+            return
+
+        square_size = size // 8
+
+        # Parse FEN to get piece positions (first part before space)
+        fen_parts = fen.split(' ')
+        board_fen = fen_parts[0]
+        rows = board_fen.split('/')
+
+        # Draw board squares and pieces
+        for row_idx, row in enumerate(rows):
+            col_idx = 0
+            for char in row:
+                if char.isdigit():
+                    # Empty squares
+                    for _ in range(int(char)):
+                        color = LIGHT if (row_idx + col_idx) % 2 == 0 else DARK
+                        square_rect = pygame.Rect(x + col_idx * square_size,
+                                                 y + row_idx * square_size,
+                                                 square_size, square_size)
+                        pygame.draw.rect(self.screen, color, square_rect)
+                        col_idx += 1
+                else:
+                    # Draw square
+                    color = LIGHT if (row_idx + col_idx) % 2 == 0 else DARK
+                    square_rect = pygame.Rect(x + col_idx * square_size,
+                                             y + row_idx * square_size,
+                                             square_size, square_size)
+                    pygame.draw.rect(self.screen, color, square_rect)
+
+                    # Draw piece
+                    piece_color = "white" if char.isupper() else "black"
+                    piece_type_map = {
+                        'p': 'pawn', 'n': 'knight', 'b': 'bishop',
+                        'r': 'rook', 'q': 'queen', 'k': 'king'
+                    }
+                    piece_type = piece_type_map[char.lower()]
+
+                    piece_img = IMAGES[piece_color][piece_type]
+                    scaled_img = pygame.transform.scale(piece_img, (square_size - 4, square_size - 4))
+                    img_rect = scaled_img.get_rect(center=square_rect.center)
+                    self.screen.blit(scaled_img, img_rect)
+
+                    col_idx += 1
+
+        # Draw border around the board
+        border_rect = pygame.Rect(x, y, size, size)
+        pygame.draw.rect(self.screen, WHITE, border_rect, 2)
 
     def draw_puzzles(self):
         '''Draw puzzle screen'''
@@ -794,12 +1054,12 @@ class Game:
         # Header
         header_font = pygame.font.Font(None, 40)
         title = f"Puzzle {puzzle['id']}: {puzzle['name']}"
-        title_surface = header_font.render(title, True, TEXT_COLOR)
+        title_surface = header_font.render(title, True, TEXT_PRIMARY)
         self.screen.blit(title_surface, (20, 20))
 
         # Theme and difficulty
         info = f"{puzzle['theme']} | {puzzle['difficulty'].title()}"
-        info_surface = self.tiny_font.render(info, True, (180, 180, 180))
+        info_surface = self.tiny_font.render(info, True, TEXT_SECONDARY)
         self.screen.blit(info_surface, (20, 60))
 
         # Description
@@ -809,7 +1069,7 @@ class Game:
         # FEN position
         fen_label = self.tiny_font.render("Position (FEN):", True, (150, 150, 150))
         self.screen.blit(fen_label, (20, 130))
-        fen_surface = self.tiny_font.render(puzzle['fen'], True, TEXT_COLOR)
+        fen_surface = self.tiny_font.render(puzzle['fen'], True, TEXT_PRIMARY)
         self.screen.blit(fen_surface, (20, 155))
 
         # Solution moves
@@ -819,7 +1079,7 @@ class Game:
         y_pos = 220
         for i, move in enumerate(puzzle['solution'], 1):
             move_text = f"{i}. {move}"
-            move_surface = self.tiny_font.render(move_text, True, TEXT_COLOR)
+            move_surface = self.tiny_font.render(move_text, True, TEXT_PRIMARY)
             self.screen.blit(move_surface, (30, y_pos))
             y_pos += 22
 
@@ -848,28 +1108,31 @@ class Game:
 
         # Back to menu
         back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect, border_radius=8)
-        back_text = self.tiny_font.render("Back to Menu", True, TEXT_COLOR)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect)
+        pygame.draw.rect(self.screen, WHITE, back_rect, 2)
+        back_text = self.tiny_font.render("Back to Menu", True, TEXT_PRIMARY)
         self.screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.centery - back_text.get_height()//2))
 
         # Previous
         if self.puzzles.current_puzzle_index > 0:
             prev_rect = pygame.Rect(WIDTH//2 - 130, btn_y, btn_width, btn_height)
-            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect, border_radius=8)
-            prev_text = self.tiny_font.render("< Previous", True, TEXT_COLOR)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect)
+            pygame.draw.rect(self.screen, WHITE, prev_rect, 2)
+            prev_text = self.tiny_font.render("< Previous", True, TEXT_PRIMARY)
             self.screen.blit(prev_text, (prev_rect.centerx - prev_text.get_width()//2, prev_rect.centery - prev_text.get_height()//2))
 
         # Progress
         progress = self.puzzles.get_progress()
         progress_text = f"Puzzle {progress['current']} / {progress['total']}"
-        progress_surface = self.tiny_font.render(progress_text, True, (180, 180, 180))
+        progress_surface = self.tiny_font.render(progress_text, True, TEXT_SECONDARY)
         self.screen.blit(progress_surface, (WIDTH//2 - progress_surface.get_width()//2, btn_y + 10))
 
         # Next
         if self.puzzles.current_puzzle_index < len(self.puzzles.puzzles) - 1:
             next_rect = pygame.Rect(WIDTH//2 + 10, btn_y, btn_width, btn_height)
-            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect, border_radius=8)
-            next_text = self.tiny_font.render("Next >", True, TEXT_COLOR)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect)
+            pygame.draw.rect(self.screen, WHITE, next_rect, 2)
+            next_text = self.tiny_font.render("Next >", True, TEXT_PRIMARY)
             self.screen.blit(next_text, (next_rect.centerx - next_text.get_width()//2, next_rect.centery - next_text.get_height()//2))
 
     def draw_help(self):
@@ -878,7 +1141,7 @@ class Game:
 
         # Header
         header_font = pygame.font.Font(None, 48)
-        title_surface = header_font.render("Help & Instructions", True, TEXT_COLOR)
+        title_surface = header_font.render("Help & Instructions", True, TEXT_PRIMARY)
         self.screen.blit(title_surface, (20, 20))
 
         help_sections = [
@@ -921,7 +1184,7 @@ class Game:
                 break
 
             # Section title
-            section_surface = self.small_font.render(section_title, True, (100, 200, 255))
+            section_surface = self.small_font.render(section_title, True, PINK_PRIMARY)
             self.screen.blit(section_surface, (20, y_pos))
             y_pos += 28
 
@@ -929,7 +1192,7 @@ class Game:
             for line in section_lines:
                 if y_pos > HEIGHT - 100:
                     break
-                text_surface = self.tiny_font.render(line, True, TEXT_COLOR)
+                text_surface = self.tiny_font.render(line, True, TEXT_PRIMARY)
                 self.screen.blit(text_surface, (30, y_pos))
                 y_pos += 20
 
@@ -939,8 +1202,9 @@ class Game:
         btn_width = 120
         btn_height = 35
         back_rect = pygame.Rect(20, HEIGHT - 50, btn_width, btn_height)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect, border_radius=8)
-        back_text = self.tiny_font.render("Back to Menu", True, TEXT_COLOR)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect)
+        pygame.draw.rect(self.screen, WHITE, back_rect, 2)
+        back_text = self.tiny_font.render("Back to Menu", True, TEXT_PRIMARY)
         self.screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.centery - back_text.get_height()//2))
 
         # Credits
