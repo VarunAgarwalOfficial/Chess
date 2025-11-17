@@ -936,45 +936,44 @@ class Game:
 
 
     def draw_tutorial(self):
-        '''Draw tutorial screen'''
-        self.screen.fill(DASHBOARD_BG)
+        '''Draw tutorial screen with simple layout - lessons rewritten to be natural'''
+        self.screen.fill(BLACK_BG)
 
         lesson = self.tutorial.get_lesson()
         if not lesson:
             return
 
         # Header
-        header_font = pygame.font.Font(None, 40)
         title = f"Lesson {lesson['id']}: {lesson['title']}"
-        title_surface = header_font.render(title, True, TEXT_PRIMARY)
-        self.screen.blit(title_surface, (20, 20))
+        title_surface = self.font_h3.render(title, True, PINK_PRIMARY)
+        self.screen.blit(title_surface, (30, 30))
 
-        # Category and difficulty
+        # Category
         info = f"{lesson['category'].replace('_', ' ').title()} | {lesson['difficulty'].title()}"
         info_surface = self.tiny_font.render(info, True, TEXT_SECONDARY)
-        self.screen.blit(info_surface, (20, 60))
+        self.screen.blit(info_surface, (30, 65))
 
-        # Content
-        y_pos = 100
+        # Content with better spacing
+        y_pos = 105
         for line in lesson['content']:
             if y_pos > HEIGHT - 150:
                 break
-            text_surface = self.tiny_font.render(line, True, TEXT_PRIMARY)
-            self.screen.blit(text_surface, (20, y_pos))
-            y_pos += 25
+            text_surface = self.tiny_font.render(line, True, WHITE)
+            self.screen.blit(text_surface, (30, y_pos))
+            y_pos += 22
 
         # Key points
-        y_pos += 10
-        points_title = self.small_font.render("Key Points:", True, PINK_PRIMARY)
-        self.screen.blit(points_title, (20, y_pos))
-        y_pos += 30
+        y_pos += 15
+        points_title = self.small_font.render("Remember:", True, PINK_BABY)
+        self.screen.blit(points_title, (30, y_pos))
+        y_pos += 28
 
         for point in lesson['key_points']:
             if y_pos > HEIGHT - 100:
                 break
-            text_surface = self.tiny_font.render(f"- {point}", True, PINK_BABY)
-            self.screen.blit(text_surface, (30, y_pos))
-            y_pos += 22
+            text_surface = self.tiny_font.render(f"• {point}", True, WHITE)
+            self.screen.blit(text_surface, (35, y_pos))
+            y_pos += 20
 
         # Navigation buttons
         btn_width = 120
