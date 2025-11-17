@@ -38,6 +38,7 @@ DARK_SELECTED = PINK_DARK         # Dark pink for selected dark
 # Highlight colors
 HILIGHT = (236, 64, 122, 120)     # Pink highlight
 HILIGHT_CAPTURE = (255, 64, 129, 150)  # Bright pink for captures
+LAST_MOVE_HIGHLIGHT = (255, 255, 100, 100)  # Light yellow for last move
 
 # UI colors
 BLACK_BG = BLACK
@@ -209,6 +210,20 @@ class Game:
         # AI thinking
         self.ai_thinking = False
         self.ai_thread = None
+        self.ai_thinking_dots = 0  # For animated thinking indicator
+        self.ai_thinking_timer = 0
+
+        # Last move highlighting
+        self.last_move_from = None
+        self.last_move_to = None
+
+        # Move animation
+        self.animating_move = False
+        self.animation_piece = None
+        self.animation_from = None
+        self.animation_to = None
+        self.animation_progress = 0
+        self.animation_duration = 250  # milliseconds
 
         # Menu state
         self.show_menu = True
@@ -386,6 +401,17 @@ class Game:
         self.move_history_display = []
         self.captured_pieces = {"white": [], "black": []}
 
+        # Reset last move highlighting
+        self.last_move_from = None
+        self.last_move_to = None
+
+        # Reset animations
+        self.animating_move = False
+        self.animation_piece = None
+        self.animation_from = None
+        self.animation_to = None
+        self.animation_progress = 0
+
         # Always create AI for evaluation (even in PvP mode)
         # In PvP, AI is used only for position evaluation, not for making moves
         self.ai = AI(self.board, color=self.ai_color, difficulty=difficulty)
@@ -421,6 +447,13 @@ class Game:
                     color = COLORS[(i+j)%2]
 
                 pygame.draw.rect(self.screen, color, pygame.Rect(j*PIECE_HEIGHT, i*PIECE_HEIGHT, PIECE_HEIGHT, PIECE_HEIGHT))
+
+                # Highlight last move
+                if self.last_move_from and (i, j) == self.last_move_from:
+                    draw_rect_alpha(self.screen, LAST_MOVE_HIGHLIGHT, pygame.Rect(j*PIECE_HEIGHT, i*PIECE_HEIGHT, PIECE_HEIGHT, PIECE_HEIGHT))
+                if self.last_move_to and (i, j) == self.last_move_to:
+                    draw_rect_alpha(self.screen, LAST_MOVE_HIGHLIGHT, pygame.Rect(j*PIECE_HEIGHT, i*PIECE_HEIGHT, PIECE_HEIGHT, PIECE_HEIGHT))
+
                 piece = self.board.state[i][j]
 
                 # hilight the possible moves
@@ -430,9 +463,13 @@ class Game:
                     else:
                         draw_rect_alpha(self.screen, HILIGHT, pygame.Rect(j*PIECE_HEIGHT, i*PIECE_HEIGHT, PIECE_HEIGHT, PIECE_HEIGHT))
 
-
-                if(piece):
+                # Draw piece (skip if it's being animated)
+                if piece and not (self.animating_move and (i, j) == self.animation_from):
                     self.screen.blit(IMAGES[piece.color][piece.type] ,( j*PIECE_HEIGHT, i*PIECE_HEIGHT))
+
+        # Draw animated piece on top
+        if self.animating_move and self.animation_piece:
+            self.draw_animated_piece()
 
         # Draw dashboard
         self.draw_dashboard()
@@ -447,11 +484,9 @@ class Game:
         if self.board.game_over:
             self.draw_game_over()
 
-        # Draw AI thinking indicator
+        # Draw AI thinking indicator (animated)
         if self.ai_thinking:
-            thinking_text = "AI is thinking..."
-            thinking_surface = self.small_font.render(thinking_text, True, PINK_BRIGHT)
-            self.screen.blit(thinking_surface, (BOARD_SIZE // 2 - 80, HEIGHT - 30))
+            self.draw_ai_thinking_indicator()
 
         # Draw back button in dashboard area (right side)
         mouse_pos = pygame.mouse.get_pos()
@@ -651,10 +686,78 @@ class Game:
 
         return HEIGHT
 
+    def draw_ai_thinking_indicator(self):
+        '''Draw animated AI thinking indicator in dashboard area'''
+        # Update animation timer
+        current_time = pygame.time.get_ticks()
+        if current_time - self.ai_thinking_timer > 400:  # Update every 400ms
+            self.ai_thinking_timer = current_time
+            self.ai_thinking_dots = (self.ai_thinking_dots + 1) % 4
+
+        # Create text with animated dots
+        dots = "." * self.ai_thinking_dots
+        thinking_text = f"AI is thinking{dots}"
+
+        # Draw in game info card area (dashboard)
+        dashboard_x = BOARD_SIZE
+        card_y = 140  # Below the game mode chip
+
+        thinking_surface = self.small_font.render(thinking_text, True, PINK_BRIGHT)
+        self.screen.blit(thinking_surface, (dashboard_x + 32, card_y))
+
+    def draw_animated_piece(self):
+        '''Draw a piece being animated from one square to another'''
+        if not self.animation_piece or self.animation_from is None or self.animation_to is None:
+            return
+
+        # Calculate current position using linear interpolation
+        from_x = self.animation_from[1] * PIECE_HEIGHT
+        from_y = self.animation_from[0] * PIECE_HEIGHT
+        to_x = self.animation_to[1] * PIECE_HEIGHT
+        to_y = self.animation_to[0] * PIECE_HEIGHT
+
+        # Linear interpolation
+        t = self.animation_progress
+        current_x = from_x + (to_x - from_x) * t
+        current_y = from_y + (to_y - from_y) * t
+
+        # Draw the piece at interpolated position
+        piece_img = IMAGES[self.animation_piece.color][self.animation_piece.type]
+        self.screen.blit(piece_img, (int(current_x), int(current_y)))
+
+    def update(self):
+        '''Update game state and animations'''
+        if self.show_menu or self.show_tutorial or self.show_puzzles or self.show_help:
+            return
+
+        # Update move animation
+        if self.animating_move:
+            # Calculate progress based on time elapsed
+            delta_time = CLOCK.get_time()  # Time since last frame in ms
+            progress_increment = delta_time / self.animation_duration
+
+            self.animation_progress += progress_increment
+
+            if self.animation_progress >= 1.0:
+                # Animation complete
+                self.animating_move = False
+                self.animation_progress = 0
+                self.animation_piece = None
+                self.animation_from = None
+                self.animation_to = None
+
+    def start_move_animation(self, from_pos, to_pos, piece):
+        '''Start animating a piece move'''
+        self.animating_move = True
+        self.animation_from = from_pos
+        self.animation_to = to_pos
+        self.animation_piece = piece
+        self.animation_progress = 0
+
     def run(self):
         while self.running:
             self.events()
-            # self.update()
+            self.update()
             self.draw()
             pygame.display.update()
             CLOCK.tick(FPS)
@@ -717,6 +820,10 @@ class Game:
                 if self.move_history_display:
                     self.move_history_display.pop()
 
+            # Clear last move highlighting after undo
+            self.last_move_from = None
+            self.last_move_to = None
+
     def ai_make_move(self):
         '''Make AI move in a separate thread'''
         if self.ai_thread and self.ai_thread.is_alive():
@@ -727,14 +834,25 @@ class Game:
         def ai_move_thread():
             move, pos = self.ai.get_best_move()
             if move and pos:
+                # Store the piece for animation (before moving it)
+                piece_to_animate = self.board.state[pos[0]][pos[1]]
+
                 # Record captured piece
                 if self.board.state[move["to"][0]][move["to"][1]]:
                     captured = self.board.state[move["to"][0]][move["to"][1]]
                     opponent = "white" if self.ai_color == "black" else "black"
                     self.captured_pieces[opponent].append(captured.type)
 
+                # Start animation before making the move
+                if piece_to_animate:
+                    self.start_move_animation(pos, move["to"], piece_to_animate)
+
                 # Make the move
                 self.board.move(pos, move)
+
+                # Update last move highlighting
+                self.last_move_from = pos
+                self.last_move_to = move["to"]
 
                 # Add to opening book
                 self.opening_book.add_move(pos, move["to"])
@@ -880,6 +998,10 @@ class Game:
 
                     # Make the move
                     self.board.move(self.square_selected, move)
+
+                    # Update last move highlighting
+                    self.last_move_from = self.square_selected
+                    self.last_move_to = move["to"]
 
                     # Add to opening book
                     self.opening_book.add_move(self.square_selected, move["to"])

@@ -448,3 +448,61 @@ class ChessPuzzles:
             "total": len(self.puzzles),
             "percentage": ((self.current_puzzle_index + 1) / len(self.puzzles)) * 100
         }
+
+    def check_move(self, move_san):
+        '''
+        Check if the user's move matches the next expected move in the solution
+        Returns: (is_correct, is_complete, message)
+        '''
+        puzzle = self.get_puzzle()
+        if not puzzle:
+            return (False, False, "No puzzle loaded")
+
+        solution = puzzle['solution']
+        move_index = len(self.user_moves)
+
+        if move_index >= len(solution):
+            return (False, True, "Puzzle already complete!")
+
+        expected_move = solution[move_index]
+
+        # Simple comparison (in real implementation, would need to convert board moves to SAN)
+        if move_san == expected_move or self._moves_equivalent(move_san, expected_move):
+            self.user_moves.append(move_san)
+
+            if len(self.user_moves) >= len(solution):
+                return (True, True, "Puzzle solved! Well done!")
+            else:
+                return (True, False, f"Correct! Continue... ({len(self.user_moves)}/{len(solution)})")
+        else:
+            return (False, False, f"Incorrect. Expected: {expected_move}")
+
+    def _moves_equivalent(self, move1, move2):
+        '''Check if two moves are equivalent (simple version)'''
+        # Remove common notation symbols for comparison
+        clean1 = move1.replace('+', '').replace('#', '').replace('x', '')
+        clean2 = move2.replace('+', '').replace('#', '').replace('x', '')
+        return clean1 == clean2
+
+    def get_hint(self):
+        '''Get a hint for the current puzzle'''
+        puzzle = self.get_puzzle()
+        if not puzzle:
+            return "No puzzle loaded"
+
+        solution = puzzle['solution']
+        move_index = len(self.user_moves)
+
+        if move_index >= len(solution):
+            return "Puzzle complete!"
+
+        self.hints_used += 1
+        next_move = solution[move_index]
+
+        # Return partial hint based on hints used
+        if self.hints_used == 1:
+            return f"Hint: The next move involves a {puzzle['theme'].lower()}"
+        elif self.hints_used == 2:
+            return f"Hint: Try {next_move[0]}..."  # First character
+        else:
+            return f"Solution: {next_move}"

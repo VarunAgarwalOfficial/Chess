@@ -77,10 +77,12 @@ class MoveOrderingOptimizer:
         Priority:
         1. PV move (from previous iteration)
         2. Hash move (from transposition table)
-        3. Winning captures (MVV-LVA)
+        3. Winning captures (SEE > 0)
         4. Killer moves
         5. History heuristic
-        6. Other moves
+        6. Equal captures (SEE = 0)
+        7. Other moves
+        8. Losing captures (SEE < 0)
         '''
         scored_moves = []
 
@@ -91,25 +93,29 @@ class MoveOrderingOptimizer:
             if self.is_pv_move(move, pos, depth):
                 score += 10000000
 
-            # Captures scored by MVV-LVA
+            # Captures scored by SEE (Static Exchange Evaluation)
             target = board.state[move["to"][0]][move["to"][1]]
             if target:
-                piece_values = {
-                    "pawn": 100, "knight": 320, "bishop": 330,
-                    "rook": 500, "queen": 900, "king": 20000
-                }
-                attacker = board.state[pos[0]][pos[1]]
-                victim_value = piece_values[target.type]
-                attacker_value = piece_values[attacker.type]
-                score += (victim_value * 10 - attacker_value) * 1000
+                # Use SEE to evaluate the capture
+                see_score = StaticExchangeEvaluation.evaluate(board, move, pos)
+
+                # Winning captures get high priority
+                if see_score > 0:
+                    score += 1000000 + see_score
+                # Equal captures get medium priority
+                elif see_score == 0:
+                    score += 500000
+                # Losing captures get low priority (but still considered)
+                else:
+                    score += see_score  # Negative value
 
             # Promotions are valuable
             if move["special"] == "promotion":
-                score += 9000
+                score += 900000
 
             # Killer moves
             if self.is_killer_move(move, pos, depth):
-                score += 8000
+                score += 800000
 
             # History heuristic
             history_key = self.get_history_key(move, pos)
@@ -351,6 +357,267 @@ class AspirationWindow:
             alpha = float('-inf')
 
         return (alpha, beta)
+
+
+class StaticExchangeEvaluation:
+    '''
+    Static Exchange Evaluation (SEE)
+    Evaluates the material outcome of a capture sequence on a square
+    Uses the swap algorithm from Chess Programming Wiki
+    '''
+
+    # Piece values for SEE (centipawns)
+    PIECE_VALUES = {
+        "pawn": 100,
+        "knight": 320,
+        "bishop": 330,
+        "rook": 500,
+        "queen": 900,
+        "king": 20000
+    }
+
+    @staticmethod
+    def evaluate(board, move, from_pos):
+        '''
+        Evaluate a capture using Static Exchange Evaluation
+        Returns the material gain/loss in centipawns
+
+        Args:
+            board: The chess board
+            move: The move being evaluated
+            from_pos: The position the piece is moving from
+
+        Returns:
+            int: Material gain/loss (positive = good for attacker)
+        '''
+        to_square = move["to"]
+        target = board.state[to_square[0]][to_square[1]]
+
+        # Not a capture
+        if target is None:
+            return 0
+
+        attacker = board.state[from_pos[0]][from_pos[1]]
+        if attacker is None:
+            return 0
+
+        # Initialize the gain list with the captured piece value
+        gain = [StaticExchangeEvaluation.PIECE_VALUES[target.type]]
+
+        # Track which pieces are involved
+        attacker_value = StaticExchangeEvaluation.PIECE_VALUES[attacker.type]
+
+        # Get all attackers of the target square
+        attackers = StaticExchangeEvaluation._get_attackers(board, to_square, attacker.color)
+        defenders = StaticExchangeEvaluation._get_attackers(board, to_square, target.color)
+
+        # Remove the initial attacker from the list
+        if from_pos in attackers:
+            attackers.remove(from_pos)
+
+        # Simulate the exchange
+        current_attacker_value = attacker_value
+        side = target.color  # Defender goes next
+
+        while True:
+            # Add the current attacker value to gains
+            if len(gain) > 0:
+                gain.append(current_attacker_value - gain[-1])
+
+            # Get next attacker for current side
+            if side == target.color:
+                # Defenders turn
+                if not defenders:
+                    break
+                next_attacker_pos = StaticExchangeEvaluation._get_least_valuable_piece(board, defenders)
+                defenders.remove(next_attacker_pos)
+                side = attacker.color
+            else:
+                # Attackers turn
+                if not attackers:
+                    break
+                next_attacker_pos = StaticExchangeEvaluation._get_least_valuable_piece(board, attackers)
+                attackers.remove(next_attacker_pos)
+                side = target.color
+
+            next_piece = board.state[next_attacker_pos[0]][next_attacker_pos[1]]
+            if next_piece is None:
+                break
+            current_attacker_value = StaticExchangeEvaluation.PIECE_VALUES[next_piece.type]
+
+        # Negamax the gain list
+        while len(gain) > 1:
+            gain[-2] = -max(-gain[-2], gain[-1])
+            gain.pop()
+
+        return gain[0] if gain else 0
+
+    @staticmethod
+    def _get_attackers(board, square, color):
+        '''
+        Get all pieces of a given color that attack a square
+
+        Args:
+            board: The chess board
+            square: The target square (row, col)
+            color: The color of attacking pieces
+
+        Returns:
+            list: List of positions (row, col) of attacking pieces
+        '''
+        attackers = []
+        row, col = square
+
+        # Check all squares for pieces of the given color
+        for r in range(8):
+            for c in range(8):
+                piece = board.state[r][c]
+                if piece and piece.color == color:
+                    # Check if this piece can attack the square
+                    if StaticExchangeEvaluation._can_attack(board, (r, c), square, piece):
+                        attackers.append((r, c))
+
+        return attackers
+
+    @staticmethod
+    def _can_attack(board, from_pos, to_pos, piece):
+        '''
+        Check if a piece can attack a square
+        Simplified version - doesn't check for pins or checks
+        '''
+        from_row, from_col = from_pos
+        to_row, to_col = to_pos
+
+        if from_pos == to_pos:
+            return False
+
+        piece_type = piece.type
+
+        # Pawn attacks
+        if piece_type == "pawn":
+            direction = -1 if piece.color == "white" else 1
+            if to_row - from_row == direction and abs(to_col - from_col) == 1:
+                return True
+            return False
+
+        # Knight attacks
+        if piece_type == "knight":
+            row_diff = abs(to_row - from_row)
+            col_diff = abs(to_col - from_col)
+            return (row_diff == 2 and col_diff == 1) or (row_diff == 1 and col_diff == 2)
+
+        # King attacks
+        if piece_type == "king":
+            return abs(to_row - from_row) <= 1 and abs(to_col - from_col) <= 1
+
+        # Sliding pieces (bishop, rook, queen)
+        row_diff = to_row - from_row
+        col_diff = to_col - from_col
+
+        # Bishop/Queen diagonal
+        if piece_type in ["bishop", "queen"]:
+            if abs(row_diff) == abs(col_diff):
+                # Check if path is clear
+                row_step = 1 if row_diff > 0 else -1
+                col_step = 1 if col_diff > 0 else -1
+                r, c = from_row + row_step, from_col + col_step
+                while (r, c) != to_pos:
+                    if board.state[r][c] is not None:
+                        return False
+                    r += row_step
+                    c += col_step
+                return True
+
+        # Rook/Queen straight
+        if piece_type in ["rook", "queen"]:
+            if row_diff == 0 or col_diff == 0:
+                # Check if path is clear
+                row_step = 0 if row_diff == 0 else (1 if row_diff > 0 else -1)
+                col_step = 0 if col_diff == 0 else (1 if col_diff > 0 else -1)
+                r, c = from_row + row_step, from_col + col_step
+                while (r, c) != to_pos:
+                    if board.state[r][c] is not None:
+                        return False
+                    r += row_step
+                    c += col_step
+                return True
+
+        return False
+
+    @staticmethod
+    def _get_least_valuable_piece(board, positions):
+        '''
+        Get the least valuable piece from a list of positions
+
+        Args:
+            board: The chess board
+            positions: List of piece positions
+
+        Returns:
+            tuple: Position (row, col) of least valuable piece
+        '''
+        if not positions:
+            return None
+
+        min_value = float('inf')
+        min_pos = positions[0]
+
+        for pos in positions:
+            piece = board.state[pos[0]][pos[1]]
+            if piece:
+                value = StaticExchangeEvaluation.PIECE_VALUES[piece.type]
+                if value < min_value:
+                    min_value = value
+                    min_pos = pos
+
+        return min_pos
+
+
+class Razoring:
+    '''
+    Razoring optimization for alpha-beta search
+    At low depths, if static eval + margin < alpha, reduce depth
+    '''
+
+    # Razoring margins by depth (centipawns)
+    MARGINS = {
+        1: 300,
+        2: 500
+    }
+
+    @staticmethod
+    def should_apply(depth, alpha, static_eval, in_check, pv_node):
+        '''
+        Determine if razoring should be applied
+
+        Args:
+            depth: Current search depth
+            alpha: Alpha bound
+            static_eval: Static evaluation of position
+            in_check: Whether king is in check
+            pv_node: Whether this is a PV node
+
+        Returns:
+            bool: True if razoring should be applied
+        '''
+        # Only apply at depth 1-2
+        if depth not in [1, 2]:
+            return False
+
+        # Don't apply in check
+        if in_check:
+            return False
+
+        # Don't apply in PV nodes
+        if pv_node:
+            return False
+
+        # Check if position is bad enough for razoring
+        margin = Razoring.MARGINS[depth]
+        if static_eval + margin < alpha:
+            return True
+
+        return False
 
 
 # Performance monitoring
