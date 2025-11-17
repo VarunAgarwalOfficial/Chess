@@ -507,7 +507,7 @@ class AI:
         '''
         Find the best move using iterative deepening with aspiration windows
         '''
-        print(f"\n=== AI ({self.color}) thinking (Difficulty: {self.difficulty}, Depth: {self.max_depth}) ===")
+        print(f"AI ({self.color}) is thinking...")
         start_time = time.time()
 
         # Reset statistics
@@ -579,26 +579,16 @@ class AI:
                     # Score within window - done
                     break
 
-            # Update best move for this iteration
+            # Update best move for this iteration (silently, no output per depth)
             if current_best_move:
                 best_move = current_best_move
                 best_pos = current_best_pos
                 prev_score = best_score
-                window_str = f" (window iterations: {search_iterations})" if search_iterations > 1 else ""
-                print(f"Depth {current_depth}: Score = {best_score}, Move = {best_pos} -> {best_move['to']}{window_str}")
 
         elapsed_time = time.time() - start_time
-        nps = int(self.nodes_searched / elapsed_time) if elapsed_time > 0 else 0
 
-        print(f"Search completed in {elapsed_time:.2f}s")
-        print(f"Nodes searched: {self.nodes_searched:,}")
-        print(f"Nodes per second: {nps:,}")
-        print(f"Cutoffs: {self.cutoffs:,}")
-        print(f"Transposition hits: {self.transposition_hits:,}")
-        if self.transposition_table.lookups > 0:
-            hit_rate = self.transposition_hits / self.transposition_table.lookups
-            print(f"TT hit rate: {hit_rate:.1%}")
-        print(f"Best move: {best_pos} -> {best_move['to']}\n")
+        # Only show final result - concise output
+        print(f"AI move: {best_pos} -> {best_move['to']} ({elapsed_time:.2f}s)\n")
 
         return best_move, best_pos
 
