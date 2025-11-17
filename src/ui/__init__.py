@@ -196,8 +196,9 @@ class Game:
         self.show_hint = False
         self.hint_move = None
 
-        # Evaluation
+        # Evaluation (cached to avoid recalculating every frame)
         self.current_eval = 0
+        self.last_move_count = 0  # Track when to update eval
 
         # Move history
         self.move_history_display = []
@@ -471,8 +472,8 @@ class Game:
         margin = 16
         y_offset = margin
 
-        # Game Info Card
-        card_rect = pygame.Rect(dashboard_x + margin, y_offset, DASHBOARD_WIDTH - margin * 2, 140)
+        # Game Info Card (increased height to fit opening name properly)
+        card_rect = pygame.Rect(dashboard_x + margin, y_offset, DASHBOARD_WIDTH - margin * 2, 170)
         draw_card(self.screen, card_rect, elevated=True)
 
         # Card content
@@ -492,17 +493,18 @@ class Game:
         self.screen.blit(turn_surface, (dashboard_x + margin + 16, card_y))
         card_y += 32
 
-        # Current opening
+        # Current opening (now with proper spacing)
         opening_text = self.opening_book.get_current_opening()
         if len(opening_text) > 30:
             opening_text = opening_text[:27] + "..."
         opening_label = self.tiny_font.render("Opening:", True, TEXT_DISABLED)
         self.screen.blit(opening_label, (dashboard_x + margin + 16, card_y))
-        card_y += 20
+        card_y += 18
         opening_surface = self.tiny_font.render(opening_text, True, TEXT_SECONDARY)
         self.screen.blit(opening_surface, (dashboard_x + margin + 16, card_y))
+        card_y += 22  # Add bottom padding
 
-        y_offset += 156
+        y_offset += 186
 
         # Evaluation bar
         y_offset = self.draw_evaluation_bar(dashboard_x, y_offset, margin)
@@ -520,9 +522,13 @@ class Game:
         card_rect = pygame.Rect(x + margin, y, DASHBOARD_WIDTH - margin * 2, card_height)
         draw_card(self.screen, card_rect)
 
-        # Calculate evaluation if AI exists and not thinking (to avoid board corruption)
+        # Calculate evaluation ONLY when position changes (not every frame!)
+        # This is a MASSIVE performance improvement - from 3600 evals/min to 2-5/min
         if self.ai and not self.board.game_over and not self.ai_thinking:
-            self.current_eval = self.ai.evaluate_board() / 100.0  # Convert centipawns to pawns
+            current_move_count = len(self.board.move_log)
+            if current_move_count != self.last_move_count:
+                self.current_eval = self.ai.evaluate_board() / 100.0  # Convert centipawns to pawns
+                self.last_move_count = current_move_count
 
         # Clamp evaluation between -10 and +10 for display
         display_eval = max(-10, min(10, self.current_eval))
