@@ -893,7 +893,7 @@ class Game:
         # Header
         header_font = pygame.font.Font(None, 40)
         title = f"Lesson {lesson['id']}: {lesson['title']}"
-        title_surface = header_font.render(title, True, TEXT_COLOR)
+        title_surface = header_font.render(title, True, TEXT_PRIMARY)
         self.screen.blit(title_surface, (20, 20))
 
         # Category and difficulty
@@ -906,7 +906,7 @@ class Game:
         for line in lesson['content']:
             if y_pos > HEIGHT - 150:
                 break
-            text_surface = self.tiny_font.render(line, True, TEXT_COLOR)
+            text_surface = self.tiny_font.render(line, True, TEXT_PRIMARY)
             self.screen.blit(text_surface, (20, y_pos))
             y_pos += 25
 
@@ -930,15 +930,17 @@ class Game:
 
         # Back to menu
         back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect, border_radius=8)
-        back_text = self.tiny_font.render("Back to Menu", True, TEXT_COLOR)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect)
+        pygame.draw.rect(self.screen, WHITE, back_rect, 2)
+        back_text = self.tiny_font.render("Back to Menu", True, TEXT_PRIMARY)
         self.screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.centery - back_text.get_height()//2))
 
         # Previous
         if self.tutorial.current_lesson_index > 0:
             prev_rect = pygame.Rect(WIDTH//2 - 130, btn_y, btn_width, btn_height)
-            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect, border_radius=8)
-            prev_text = self.tiny_font.render("< Previous", True, TEXT_COLOR)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect)
+            pygame.draw.rect(self.screen, WHITE, prev_rect, 2)
+            prev_text = self.tiny_font.render("< Previous", True, TEXT_PRIMARY)
             self.screen.blit(prev_text, (prev_rect.centerx - prev_text.get_width()//2, prev_rect.centery - prev_text.get_height()//2))
 
         # Progress
@@ -950,8 +952,9 @@ class Game:
         # Next
         if self.tutorial.current_lesson_index < len(self.tutorial.lessons) - 1:
             next_rect = pygame.Rect(WIDTH//2 + 10, btn_y, btn_width, btn_height)
-            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect, border_radius=8)
-            next_text = self.tiny_font.render("Next >", True, TEXT_COLOR)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect)
+            pygame.draw.rect(self.screen, WHITE, next_rect, 2)
+            next_text = self.tiny_font.render("Next >", True, TEXT_PRIMARY)
             self.screen.blit(next_text, (next_rect.centerx - next_text.get_width()//2, next_rect.centery - next_text.get_height()//2))
 
     def draw_puzzles(self):
@@ -965,7 +968,7 @@ class Game:
         # Header
         header_font = pygame.font.Font(None, 40)
         title = f"Puzzle {puzzle['id']}: {puzzle['name']}"
-        title_surface = header_font.render(title, True, TEXT_COLOR)
+        title_surface = header_font.render(title, True, TEXT_PRIMARY)
         self.screen.blit(title_surface, (20, 20))
 
         # Theme and difficulty
@@ -980,7 +983,7 @@ class Game:
         # FEN position
         fen_label = self.tiny_font.render("Position (FEN):", True, (150, 150, 150))
         self.screen.blit(fen_label, (20, 130))
-        fen_surface = self.tiny_font.render(puzzle['fen'], True, TEXT_COLOR)
+        fen_surface = self.tiny_font.render(puzzle['fen'], True, TEXT_PRIMARY)
         self.screen.blit(fen_surface, (20, 155))
 
         # Solution moves
@@ -990,7 +993,7 @@ class Game:
         y_pos = 220
         for i, move in enumerate(puzzle['solution'], 1):
             move_text = f"{i}. {move}"
-            move_surface = self.tiny_font.render(move_text, True, TEXT_COLOR)
+            move_surface = self.tiny_font.render(move_text, True, TEXT_PRIMARY)
             self.screen.blit(move_surface, (30, y_pos))
             y_pos += 22
 
@@ -1019,15 +1022,17 @@ class Game:
 
         # Back to menu
         back_rect = pygame.Rect(20, btn_y, btn_width, btn_height)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect, border_radius=8)
-        back_text = self.tiny_font.render("Back to Menu", True, TEXT_COLOR)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect)
+        pygame.draw.rect(self.screen, WHITE, back_rect, 2)
+        back_text = self.tiny_font.render("Back to Menu", True, TEXT_PRIMARY)
         self.screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.centery - back_text.get_height()//2))
 
         # Previous
         if self.puzzles.current_puzzle_index > 0:
             prev_rect = pygame.Rect(WIDTH//2 - 130, btn_y, btn_width, btn_height)
-            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect, border_radius=8)
-            prev_text = self.tiny_font.render("< Previous", True, TEXT_COLOR)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, prev_rect)
+            pygame.draw.rect(self.screen, WHITE, prev_rect, 2)
+            prev_text = self.tiny_font.render("< Previous", True, TEXT_PRIMARY)
             self.screen.blit(prev_text, (prev_rect.centerx - prev_text.get_width()//2, prev_rect.centery - prev_text.get_height()//2))
 
         # Progress
@@ -1039,8 +1044,9 @@ class Game:
         # Next
         if self.puzzles.current_puzzle_index < len(self.puzzles.puzzles) - 1:
             next_rect = pygame.Rect(WIDTH//2 + 10, btn_y, btn_width, btn_height)
-            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect, border_radius=8)
-            next_text = self.tiny_font.render("Next >", True, TEXT_COLOR)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, next_rect)
+            pygame.draw.rect(self.screen, WHITE, next_rect, 2)
+            next_text = self.tiny_font.render("Next >", True, TEXT_PRIMARY)
             self.screen.blit(next_text, (next_rect.centerx - next_text.get_width()//2, next_rect.centery - next_text.get_height()//2))
 
     def draw_help(self):
@@ -1049,7 +1055,7 @@ class Game:
 
         # Header
         header_font = pygame.font.Font(None, 48)
-        title_surface = header_font.render("Help & Instructions", True, TEXT_COLOR)
+        title_surface = header_font.render("Help & Instructions", True, TEXT_PRIMARY)
         self.screen.blit(title_surface, (20, 20))
 
         help_sections = [
@@ -1100,7 +1106,7 @@ class Game:
             for line in section_lines:
                 if y_pos > HEIGHT - 100:
                     break
-                text_surface = self.tiny_font.render(line, True, TEXT_COLOR)
+                text_surface = self.tiny_font.render(line, True, TEXT_PRIMARY)
                 self.screen.blit(text_surface, (30, y_pos))
                 y_pos += 20
 
@@ -1110,8 +1116,9 @@ class Game:
         btn_width = 120
         btn_height = 35
         back_rect = pygame.Rect(20, HEIGHT - 50, btn_width, btn_height)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect, border_radius=8)
-        back_text = self.tiny_font.render("Back to Menu", True, TEXT_COLOR)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, back_rect)
+        pygame.draw.rect(self.screen, WHITE, back_rect, 2)
+        back_text = self.tiny_font.render("Back to Menu", True, TEXT_PRIMARY)
         self.screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.centery - back_text.get_height()//2))
 
         # Credits
