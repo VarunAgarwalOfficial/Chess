@@ -9,94 +9,74 @@ class ChessTutorial:
         self.lessons = [
             {
                 "id": 1,
-                "title": "The Pawn",
+                "title": "Pawn",
                 "category": "basics",
                 "difficulty": "beginner",
                 "content": [
-                    "Pawns move straight forward, one square at a time.",
-                    "",
-                    "When a pawn hasn't moved yet, it can jump two squares forward",
-                    "if it wants to. After that, it's back to one square at a time.",
-                    "",
-                    "To capture an enemy piece, pawns move diagonally forward -",
-                    "one square to the left or right. They can't capture forward.",
-                    "",
-                    "Pawns never move backward. Once they move, there's no going back!"
+                    "→ Moves forward one square",
+                    "→ First move: can go two squares",
+                    "→ Attacks diagonally (one square)",
+                    "→ Never moves backward"
                 ],
                 "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                 "key_points": [
-                    "Move forward, capture diagonally",
-                    "First move can be two squares",
-                    "Never goes backward"
+                    "Forward only",
+                    "Diagonal captures",
+                    "First move = 2 squares"
                 ]
             },
             {
                 "id": 2,
-                "title": "The Knight",
+                "title": "Knight",
                 "category": "basics",
                 "difficulty": "beginner",
                 "content": [
-                    "Knights are the trickiest piece to learn. They move in an L-shape:",
-                    "go two squares in one direction, then one square to the side.",
-                    "",
-                    "Here's the cool part: knights can hop over other pieces!",
-                    "They're the only piece that can do this.",
-                    "",
-                    "Knights are strongest when they're in the center of the board,",
-                    "where they can reach up to 8 different squares.",
-                    "",
-                    "Tip: Knights on the edge have fewer options, so keep them central!"
+                    "→ Moves in L-shape (2+1 squares)",
+                    "→ Can jump over other pieces",
+                    "→ Attacks where it lands",
+                    "→ Best in center of board"
                 ],
                 "fen": "8/8/8/3N4/8/8/8/8 w - - 0 1",
                 "key_points": [
-                    "L-shaped jumps",
-                    "Can hop over other pieces",
-                    "Best in the center"
+                    "L-shape movement",
+                    "Jumps over pieces",
+                    "Center = strong"
                 ]
             },
             {
                 "id": 3,
-                "title": "The Bishop",
+                "title": "Bishop",
                 "category": "basics",
                 "difficulty": "beginner",
                 "content": [
-                    "Bishops glide diagonally across the board. They can go as far",
-                    "as they want in one move, but can't jump over other pieces.",
-                    "",
-                    "Here's something interesting: each bishop is stuck on either",
-                    "light or dark squares for the entire game. A bishop that starts",
-                    "on a light square will never touch a dark square!",
-                    "",
-                    "Having both bishops (one light, one dark) is usually good",
-                    "because together they cover all the squares."
+                    "→ Moves diagonally (any distance)",
+                    "→ Cannot jump over pieces",
+                    "→ Stays on same color squares",
+                    "→ You have one for each color"
                 ],
                 "fen": "8/8/8/3B4/8/8/8/8 w - - 0 1",
                 "key_points": [
-                    "Moves diagonally, any distance",
-                    "Stuck on one color forever",
-                    "Bishop pair is powerful"
+                    "Diagonal movement",
+                    "Long range",
+                    "Color-locked"
                 ]
             },
             {
                 "id": 4,
-                "title": "The Rook",
+                "title": "Rook",
                 "category": "basics",
                 "difficulty": "beginner",
                 "content": [
-                    "Rooks move straight: horizontally or vertically. Like bishops,",
-                    "they can slide as far as they want, but can't jump over pieces.",
-                    "",
-                    "Rooks love open files - that's a column with no pawns in the way.",
-                    "When a rook has an open file, it can really dominate the board.",
-                    "",
-                    "Two rooks working together are incredibly strong. They can",
-                    "trap the enemy king and deliver checkmate pretty easily."
+                    "→ Moves straight lines (any distance)",
+                    "→ Horizontal or vertical",
+                    "→ Cannot jump over pieces",
+                    "→ Very powerful piece"
                 ],
                 "fen": "8/8/8/3R4/8/8/8/8 w - - 0 1",
                 "key_points": [
-                    "Straight lines: horizontal or vertical",
-                    "Love open files",
-                    "Two rooks are very powerful"
+                    "Straight lines",
+                    "Horizontal/vertical",
+                    "Second strongest piece"
                 ]
             },
             {

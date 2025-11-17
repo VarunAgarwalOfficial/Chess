@@ -284,32 +284,6 @@ class Game:
             hover = button["rect"].collidepoint(mouse_pos)
             draw_button(self.screen, button["rect"], button["text"], self.small_font, hover)
 
-        # Footer with features
-        footer_y = HEIGHT - 50
-
-        # Feature boxes
-        box_width = 180
-        box_height = 35
-        box_spacing = 10
-        total_width = box_width * 3 + box_spacing * 2
-        start_x = (WIDTH - total_width) // 2
-
-        features = [
-            ("20 Lessons", PINK_PRIMARY),
-            ("40 Puzzles", PINK_DARK),
-            ("Advanced AI", PINK_BABY)
-        ]
-
-        for i, (text, color) in enumerate(features):
-            box_x = start_x + i * (box_width + box_spacing)
-            box_rect = pygame.Rect(box_x, footer_y, box_width, box_height)
-            pygame.draw.rect(self.screen, color, box_rect)
-            pygame.draw.rect(self.screen, WHITE, box_rect, 1)
-
-            text_surface = self.tiny_font.render(text, True, WHITE)
-            text_rect = text_surface.get_rect(center=box_rect.center)
-            self.screen.blit(text_surface, text_rect)
-
     def handle_menu_click(self, pos):
         '''Handle clicks on menu buttons'''
         for button in self.menu_buttons:
@@ -478,9 +452,9 @@ class Game:
             thinking_surface = self.small_font.render(thinking_text, True, PINK_BRIGHT)
             self.screen.blit(thinking_surface, (BOARD_SIZE // 2 - 80, HEIGHT - 30))
 
-        # Draw back button
+        # Draw back button in dashboard area (right side)
         mouse_pos = pygame.mouse.get_pos()
-        back_btn_rect = pygame.Rect(10, HEIGHT - 50, 120, 40)
+        back_btn_rect = pygame.Rect(BOARD_SIZE + 20, HEIGHT - 55, 140, 45)
         back_hover = back_btn_rect.collidepoint(mouse_pos)
         draw_button(self.screen, back_btn_rect, "← MENU", self.small_font, back_hover)
         self.back_button_rect = back_btn_rect
@@ -936,44 +910,52 @@ class Game:
 
 
     def draw_tutorial(self):
-        '''Draw tutorial screen with simple layout - lessons rewritten to be natural'''
+        '''Draw tutorial screen with visual board'''
         self.screen.fill(BLACK_BG)
 
         lesson = self.tutorial.get_lesson()
         if not lesson:
             return
 
+        # Split screen: text on left, board on right
+        text_width = WIDTH // 2 - 50
+        board_x = WIDTH // 2 + 50
+        board_size = 320
+
         # Header
         title = f"Lesson {lesson['id']}: {lesson['title']}"
-        title_surface = self.font_h3.render(title, True, PINK_PRIMARY)
+        title_surface = self.font_h2.render(title, True, PINK_PRIMARY)
         self.screen.blit(title_surface, (30, 30))
 
         # Category
-        info = f"{lesson['category'].replace('_', ' ').title()} | {lesson['difficulty'].title()}"
-        info_surface = self.tiny_font.render(info, True, TEXT_SECONDARY)
-        self.screen.blit(info_surface, (30, 65))
+        info = f"{lesson['category'].replace('_', ' ').title()}"
+        info_surface = self.tiny_font.render(info, True, PINK_BABY)
+        self.screen.blit(info_surface, (30, 75))
 
-        # Content with better spacing
-        y_pos = 105
+        # Content with arrows and clean formatting
+        y_pos = 120
         for line in lesson['content']:
-            if y_pos > HEIGHT - 150:
+            if y_pos > HEIGHT - 180:
                 break
-            text_surface = self.tiny_font.render(line, True, WHITE)
+            text_surface = self.small_font.render(line, True, WHITE)
             self.screen.blit(text_surface, (30, y_pos))
-            y_pos += 22
+            y_pos += 35
 
-        # Key points
-        y_pos += 15
-        points_title = self.small_font.render("Remember:", True, PINK_BABY)
+        # Key points section
+        y_pos += 20
+        points_title = self.small_font.render("Quick Summary:", True, PINK_BABY)
         self.screen.blit(points_title, (30, y_pos))
-        y_pos += 28
+        y_pos += 30
 
         for point in lesson['key_points']:
-            if y_pos > HEIGHT - 100:
+            if y_pos > HEIGHT - 110:
                 break
-            text_surface = self.tiny_font.render(f"• {point}", True, WHITE)
+            text_surface = self.tiny_font.render(f"✓ {point}", True, PINK_BABY)
             self.screen.blit(text_surface, (35, y_pos))
-            y_pos += 20
+            y_pos += 22
+
+        # Draw visual chessboard on right side
+        self.draw_lesson_board(board_x, 100, board_size, lesson['fen'])
 
         # Navigation buttons
         btn_width = 120
@@ -1008,6 +990,58 @@ class Game:
             pygame.draw.rect(self.screen, WHITE, next_rect, 2)
             next_text = self.tiny_font.render("Next >", True, TEXT_PRIMARY)
             self.screen.blit(next_text, (next_rect.centerx - next_text.get_width()//2, next_rect.centery - next_text.get_height()//2))
+
+    def draw_lesson_board(self, x, y, size, fen):
+        '''Draw a chessboard from FEN notation for tutorial lessons'''
+        if not fen:
+            return
+
+        square_size = size // 8
+
+        # Parse FEN to get piece positions (first part before space)
+        fen_parts = fen.split(' ')
+        board_fen = fen_parts[0]
+        rows = board_fen.split('/')
+
+        # Draw board squares and pieces
+        for row_idx, row in enumerate(rows):
+            col_idx = 0
+            for char in row:
+                if char.isdigit():
+                    # Empty squares
+                    for _ in range(int(char)):
+                        color = LIGHT if (row_idx + col_idx) % 2 == 0 else DARK
+                        square_rect = pygame.Rect(x + col_idx * square_size,
+                                                 y + row_idx * square_size,
+                                                 square_size, square_size)
+                        pygame.draw.rect(self.screen, color, square_rect)
+                        col_idx += 1
+                else:
+                    # Draw square
+                    color = LIGHT if (row_idx + col_idx) % 2 == 0 else DARK
+                    square_rect = pygame.Rect(x + col_idx * square_size,
+                                             y + row_idx * square_size,
+                                             square_size, square_size)
+                    pygame.draw.rect(self.screen, color, square_rect)
+
+                    # Draw piece
+                    piece_color = "white" if char.isupper() else "black"
+                    piece_type_map = {
+                        'p': 'pawn', 'n': 'knight', 'b': 'bishop',
+                        'r': 'rook', 'q': 'queen', 'k': 'king'
+                    }
+                    piece_type = piece_type_map[char.lower()]
+
+                    piece_img = IMAGES[piece_color][piece_type]
+                    scaled_img = pygame.transform.scale(piece_img, (square_size - 4, square_size - 4))
+                    img_rect = scaled_img.get_rect(center=square_rect.center)
+                    self.screen.blit(scaled_img, img_rect)
+
+                    col_idx += 1
+
+        # Draw border around the board
+        border_rect = pygame.Rect(x, y, size, size)
+        pygame.draw.rect(self.screen, WHITE, border_rect, 2)
 
     def draw_puzzles(self):
         '''Draw puzzle screen'''
