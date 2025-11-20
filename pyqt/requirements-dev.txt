@@ -1,0 +1,32 @@
+# PyQt6 Chess Development Requirements
+
+# Testing
+pytest>=7.0.0
+pytest-qt>=4.2.0
+pytest-cov>=3.0.0
+pytest-timeout>=2.1.0
+pytest-mock>=3.6.0
+
+# Code Quality
+flake8>=4.0.0
+black>=22.0.0
+isort>=5.10.0
+mypy>=0.950
+
+# Documentation
+sphinx>=4.5.0
+sphinx-rtd-theme>=1.0.0
+
+# Debugging
+ipython>=8.0.0
+ipdb>=0.13.0
+pyqt6-debug>=0.1.0
+
+# Build
+setuptools>=65.0.0
+wheel>=0.37.0
+
+# Base requirements (from requirements.txt)
+PyQt6>=6.6.0
+PyQt6-Qt6>=6.6.0
+numpy>=1.24.0

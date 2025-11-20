@@ -1,0 +1,4 @@
+# PyQt6 Chess Application Requirements
+PyQt6>=6.6.0
+PyQt6-Qt6>=6.6.0
+numpy>=1.24.0
