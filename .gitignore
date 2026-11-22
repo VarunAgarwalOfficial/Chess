@@ -39,3 +39,7 @@ chess_stats.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Notebooks and local config
+.ipynb_checkpoints/
+.env
