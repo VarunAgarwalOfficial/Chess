@@ -1,5 +1,7 @@
 # Chess in Python and Pygame
 
+> **Archived.** Superseded by [chess-engine](https://github.com/VarunAgarwalOfficial/chess-engine), the Rust rewrite with UCI and a browser board. This repository is kept as a record and is read-only.
+
 A chess game written in Python with Pygame. It began in 2021 as a two-player game with full legal-move generation (castling, en passant, promotion, check, checkmate and stalemate), and now also has a computer opponent, a short tutorial and a set of puzzles.
 
 ![The original two-player board, with the selected pawn's legal moves highlighted](screenshots/1.png)
